@@ -39,7 +39,7 @@ fun Direct4meApp() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         TopAppBar(
-            title = { Text("Direct4Me Box Opener.") },
+            title = { Text("Direct4Me Box Opener") },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = teal,
                 titleContentColor = Color.White
@@ -60,7 +60,7 @@ fun Direct4meApp() {
                 colors = ButtonDefaults.buttonColors(containerColor = teal)
             ) {
                 Text(
-                    text = "OPEN",
+                    text = "OPENregterstgetgtzzzegtdws",
                     color = Color.White,
                     textAlign = TextAlign.Center,
                 )
