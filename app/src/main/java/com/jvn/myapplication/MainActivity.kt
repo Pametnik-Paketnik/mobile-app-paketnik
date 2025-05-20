@@ -60,7 +60,7 @@ fun Direct4meApp() {
                 colors = ButtonDefaults.buttonColors(containerColor = teal)
             ) {
                 Text(
-                    text = "OPENregterstgetgtzzzegtdws",
+                    text = "OPEN",
                     color = Color.White,
                     textAlign = TextAlign.Center,
                 )
