@@ -41,10 +41,16 @@ fun Direct4meApp() {
     var isCheckingAuth by remember { mutableStateOf(true) }
     var isAuthenticated by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        val token = authRepository.getAuthToken().first()
-        isAuthenticated = !token.isNullOrEmpty()
-        isCheckingAuth = false
+    // Listen to auth token changes in real-time
+    val authToken by authRepository.getAuthToken().collectAsState(initial = null)
+
+    // React to token changes
+    LaunchedEffect(authToken) {
+        // Update auth state whenever token changes
+        isAuthenticated = !authToken.isNullOrEmpty()
+        if (isCheckingAuth) {
+            isCheckingAuth = false
+        }
     }
 
     when {
@@ -58,20 +64,19 @@ fun Direct4meApp() {
             }
         }
         !isAuthenticated -> {
-            // Show auth screen
+            // Show auth screen if no valid token
             AuthScreen(
                 authViewModel = authViewModel,
-                onAuthSuccess = { isAuthenticated = true }
+                onAuthSuccess = {
+                    // Token will be updated automatically, triggering LaunchedEffect
+                    // But we can also force immediate update for responsiveness
+                    isAuthenticated = true
+                }
             )
         }
         else -> {
-            // Show main app
-            MainAppContent(
-                onLogout = {
-                    isAuthenticated = false
-                    // Clear the token when logging out
-                }
-            )
+            // Show main app if authenticated
+            MainAppContent()
         }
     }
 }

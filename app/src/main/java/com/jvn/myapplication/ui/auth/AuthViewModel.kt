@@ -1,3 +1,4 @@
+// File: ui/auth/AuthViewModel.kt
 package com.jvn.myapplication.ui.auth
 
 import androidx.lifecycle.ViewModel
@@ -39,11 +40,30 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
 
             authRepository.register(username, password, confirmPassword)
                 .onSuccess { message ->
+                    // Show success message first
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
                         registrationSuccess = true,
-                        successMessage = message
+                        successMessage = "Registration successful! Redirecting..."
                     )
+
+                    // Wait 2 seconds before auto-login
+                    kotlinx.coroutines.delay(1000)
+
+                    // After successful registration, automatically log the user in
+                    authRepository.login(username, password)
+                        .onSuccess {
+                            _uiState.value = _uiState.value.copy(
+                                isAuthenticated = true
+                            )
+                        }
+                        .onFailure {
+                            // Registration was successful but auto-login failed
+                            _uiState.value = _uiState.value.copy(
+                                successMessage = "Registration successful! Please login manually.",
+                                registrationSuccess = false
+                            )
+                        }
                 }
                 .onFailure { exception ->
                     _uiState.value = _uiState.value.copy(

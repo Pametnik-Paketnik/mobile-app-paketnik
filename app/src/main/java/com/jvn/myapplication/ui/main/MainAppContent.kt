@@ -16,7 +16,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -25,15 +24,11 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainAppContent(
-    onLogout: () -> Unit = {}
-) {
+fun MainAppContent() {
     val teal = Color(0xFF008C9E)
     val lightGray = Color(0xFFF5F5F5)
 
     val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-    val scope = rememberCoroutineScope()
 
     var isScanningActive by remember { mutableStateOf(false) }
 
@@ -58,44 +53,7 @@ fun MainAppContent(
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = teal,
                 titleContentColor = Color.White
-            ),
-            actions = {
-                // Add logout button
-                val authRepository = AuthRepository(context)
-                var showLogoutDialog by remember { mutableStateOf(false) }
-
-                TextButton(
-                    onClick = { showLogoutDialog = true }
-                ) {
-                    Text("Logout", color = Color.White)
-                }
-
-                if (showLogoutDialog) {
-                    AlertDialog(
-                        onDismissRequest = { showLogoutDialog = false },
-                        title = { Text("Logout") },
-                        text = { Text("Are you sure you want to logout?") },
-                        confirmButton = {
-                            TextButton(
-                                onClick = {
-                                    scope.launch {
-                                        authRepository.logout()
-                                        showLogoutDialog = false
-                                        onLogout()
-                                    }
-                                }
-                            ) {
-                                Text("Yes")
-                            }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showLogoutDialog = false }) {
-                                Text("Cancel")
-                            }
-                        }
-                    )
-                }
-            }
+            )
         )
 
         if (isScanningActive) {
