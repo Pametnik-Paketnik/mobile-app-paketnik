@@ -1,3 +1,4 @@
+// File: data/repository/AuthRepository.kt
 package com.jvn.myapplication.data.repository
 
 import android.content.Context
@@ -10,6 +11,7 @@ import com.jvn.myapplication.data.model.LoginRequest
 import com.jvn.myapplication.data.model.RegisterRequest
 import com.jvn.myapplication.utils.dataStore
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 class AuthRepository(private val context: Context) {
@@ -69,6 +71,37 @@ class AuthRepository(private val context: Context) {
         }
     }
 
+    suspend fun logout() {
+        val token = getAuthToken().first()
+        if (!token.isNullOrEmpty()) {
+            try {
+                // Call backend logout API
+                val response = authApi.logout("Bearer $token")
+                if (response.isSuccessful) {
+                    // Backend logout successful, clear local storage
+                    context.dataStore.edit { preferences ->
+                        preferences.clear()
+                    }
+                } else {
+                    // Backend logout failed, but still clear local storage
+                    context.dataStore.edit { preferences ->
+                        preferences.clear()
+                    }
+                }
+            } catch (e: Exception) {
+                // Network error, but still clear local storage
+                context.dataStore.edit { preferences ->
+                    preferences.clear()
+                }
+            }
+        } else {
+            // No token to logout, just clear local storage
+            context.dataStore.edit { preferences ->
+                preferences.clear()
+            }
+        }
+    }
+
     private suspend fun saveAuthData(token: String, username: String) {
         context.dataStore.edit { preferences ->
             preferences[TOKEN_KEY] = token
@@ -79,12 +112,6 @@ class AuthRepository(private val context: Context) {
     fun getAuthToken(): Flow<String?> {
         return context.dataStore.data.map { preferences ->
             preferences[TOKEN_KEY]
-        }
-    }
-
-    suspend fun logout() {
-        context.dataStore.edit { preferences ->
-            preferences.clear()
         }
     }
 }

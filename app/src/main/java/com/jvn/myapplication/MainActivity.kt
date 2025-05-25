@@ -17,8 +17,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jvn.myapplication.data.repository.AuthRepository
 import com.jvn.myapplication.ui.auth.AuthScreen
 import com.jvn.myapplication.ui.auth.AuthViewModel
+import com.jvn.myapplication.ui.main.AuthState
 import com.jvn.myapplication.ui.main.MainAppContent
-import kotlinx.coroutines.flow.first
+import com.jvn.myapplication.ui.main.MainAuthViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,25 +37,14 @@ fun Direct4meApp() {
     val context = LocalContext.current
     val authRepository = remember { AuthRepository(context) }
     val authViewModel: AuthViewModel = viewModel { AuthViewModel(authRepository) }
+    val mainAuthViewModel: MainAuthViewModel = viewModel { MainAuthViewModel(authRepository) }
 
-    // Check if user is already logged in
-    var isCheckingAuth by remember { mutableStateOf(true) }
-    var isAuthenticated by remember { mutableStateOf(false) }
+    val authState by mainAuthViewModel.authState.collectAsState()
 
-    // Listen to auth token changes in real-time
-    val authToken by authRepository.getAuthToken().collectAsState(initial = null)
+    println("DEBUG: Current authState in UI: $authState")
 
-    // React to token changes
-    LaunchedEffect(authToken) {
-        // Update auth state whenever token changes
-        isAuthenticated = !authToken.isNullOrEmpty()
-        if (isCheckingAuth) {
-            isCheckingAuth = false
-        }
-    }
-
-    when {
-        isCheckingAuth -> {
+    when (authState) {
+        AuthState.CHECKING -> {
             // Show loading screen while checking authentication
             Box(
                 modifier = Modifier.fillMaxSize(),
@@ -63,20 +53,22 @@ fun Direct4meApp() {
                 CircularProgressIndicator(color = Color(0xFF008C9E))
             }
         }
-        !isAuthenticated -> {
+        AuthState.UNAUTHENTICATED -> {
             // Show auth screen if no valid token
             AuthScreen(
                 authViewModel = authViewModel,
                 onAuthSuccess = {
-                    // Token will be updated automatically, triggering LaunchedEffect
-                    // But we can also force immediate update for responsiveness
-                    isAuthenticated = true
+                    // This will be handled automatically by token changes
                 }
             )
         }
-        else -> {
+        AuthState.AUTHENTICATED -> {
             // Show main app if authenticated
-            MainAppContent()
+            MainAppContent(
+                onLogout = {
+                    mainAuthViewModel.logout()
+                }
+            )
         }
     }
 }

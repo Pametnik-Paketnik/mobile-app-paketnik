@@ -6,8 +6,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 object NetworkModule {
-    private const val BASE_URL = "https://9b44-176-76-224-127.ngrok-free.app" // Use this for Android emulator
-    // For physical device, use your computer's IP: "http://192.168.1.XXX:3000/"
+    private const val BASE_URL = "https://cba5-176-76-224-127.ngrok-free.app"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY

@@ -24,11 +24,14 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainAppContent() {
+fun MainAppContent(
+    onLogout: () -> Unit = {}
+) {
     val teal = Color(0xFF008C9E)
     val lightGray = Color(0xFFF5F5F5)
 
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     var isScanningActive by remember { mutableStateOf(false) }
 
@@ -53,7 +56,40 @@ fun MainAppContent() {
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = teal,
                 titleContentColor = Color.White
-            )
+            ),
+            actions = {
+                var showLogoutDialog by remember { mutableStateOf(false) }
+
+                TextButton(
+                    onClick = { showLogoutDialog = true }
+                ) {
+                    Text("Logout", color = Color.White)
+                }
+
+                if (showLogoutDialog) {
+                    AlertDialog(
+                        onDismissRequest = { showLogoutDialog = false },
+                        title = { Text("Logout") },
+                        text = { Text("Are you sure you want to logout?") },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    println("DEBUG: Logout button clicked in MainAppContent")
+                                    onLogout()
+                                    showLogoutDialog = false
+                                }
+                            ) {
+                                Text("Yes")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showLogoutDialog = false }) {
+                                Text("Cancel")
+                            }
+                        }
+                    )
+                }
+            }
         )
 
         if (isScanningActive) {
