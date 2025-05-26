@@ -1,4 +1,4 @@
-// File: data/repository/AuthRepository.kt
+// File: data/repository/AuthRepository.kt (Simplified)
 package com.jvn.myapplication.data.repository
 
 import android.content.Context
@@ -20,6 +20,7 @@ class AuthRepository(private val context: Context) {
     companion object {
         private val TOKEN_KEY = stringPreferencesKey("auth_token")
         private val USERNAME_KEY = stringPreferencesKey("username")
+        private val USER_ID_KEY = stringPreferencesKey("user_id")
     }
 
     suspend fun login(username: String, password: String): Result<String> {
@@ -28,7 +29,9 @@ class AuthRepository(private val context: Context) {
             if (response.isSuccessful && response.body() != null) {
                 val loginResponse = response.body()!!
                 if (loginResponse.success && loginResponse.access_token != null) {
-                    saveAuthData(loginResponse.access_token, username)
+                    // Generate a user ID (in real app, this would come from backend)
+                    val userId = generateUserId(username)
+                    saveAuthData(loginResponse.access_token, username, userId)
                     Result.success("Login successful")
                 } else {
                     Result.failure(Exception(loginResponse.message))
@@ -102,16 +105,34 @@ class AuthRepository(private val context: Context) {
         }
     }
 
-    private suspend fun saveAuthData(token: String, username: String) {
+    private suspend fun saveAuthData(token: String, username: String, userId: String) {
         context.dataStore.edit { preferences ->
             preferences[TOKEN_KEY] = token
             preferences[USERNAME_KEY] = username
+            preferences[USER_ID_KEY] = userId
         }
+    }
+
+    private fun generateUserId(username: String): String {
+        // In a real app, this would come from the backend response
+        return "user_${username}_${System.currentTimeMillis()}"
     }
 
     fun getAuthToken(): Flow<String?> {
         return context.dataStore.data.map { preferences ->
             preferences[TOKEN_KEY]
+        }
+    }
+
+    fun getUserId(): Flow<String?> {
+        return context.dataStore.data.map { preferences ->
+            preferences[USER_ID_KEY]
+        }
+    }
+
+    fun getUsername(): Flow<String?> {
+        return context.dataStore.data.map { preferences ->
+            preferences[USERNAME_KEY]
         }
     }
 }
