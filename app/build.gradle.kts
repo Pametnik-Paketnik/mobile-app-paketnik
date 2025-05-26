@@ -83,4 +83,7 @@ dependencies {
 
     implementation ("androidx.activity:activity-compose:1.8.2")
 
+    implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
+
+
 }
