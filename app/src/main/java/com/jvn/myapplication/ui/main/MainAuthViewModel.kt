@@ -1,4 +1,4 @@
-// File: ui/main/MainAuthViewModel.kt
+// File: ui/main/MainAuthViewModel.kt (Simplified - back to original)
 package com.jvn.myapplication.ui.main
 
 import androidx.lifecycle.ViewModel

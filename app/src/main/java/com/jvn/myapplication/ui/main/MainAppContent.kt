@@ -1,4 +1,4 @@
-// File: ui/main/MainAppContent.kt
+// File: ui/main/MainAppContent.kt (Updated with Face Verification)
 package com.jvn.myapplication.ui.main
 
 import android.Manifest
@@ -19,7 +19,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jvn.myapplication.data.repository.AuthRepository
+import com.jvn.myapplication.data.repository.FaceVerificationRepository
+import com.jvn.myapplication.ui.face.FaceVerificationScreen
+import com.jvn.myapplication.ui.face.FaceVerificationViewModel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -33,7 +38,18 @@ fun MainAppContent(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
+    // Repositories and ViewModels
+    val authRepository = remember { AuthRepository(context) }
+    val faceVerificationRepository = remember { FaceVerificationRepository(context) }
+
     var isScanningActive by remember { mutableStateOf(false) }
+    var showFaceVerification by remember { mutableStateOf(false) }
+    var userId by remember { mutableStateOf<String?>(null) }
+
+    // Get user ID when component loads
+    LaunchedEffect(Unit) {
+        userId = authRepository.getUserId().first()
+    }
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -43,6 +59,27 @@ fun MainAppContent(
         } else {
             Toast.makeText(context, "Camera permission is required to scan QR codes", Toast.LENGTH_LONG).show()
         }
+    }
+
+    // Show Face Verification Screen if needed
+    if (showFaceVerification && userId != null) {
+        val faceVerificationViewModel: FaceVerificationViewModel = viewModel {
+            FaceVerificationViewModel(faceVerificationRepository, userId!!)
+        }
+
+        FaceVerificationScreen(
+            faceVerificationViewModel = faceVerificationViewModel,
+            onVerificationSuccess = {
+                showFaceVerification = false
+                // Here you would proceed with opening the box
+                Toast.makeText(context, "Face verification successful! Opening box...", Toast.LENGTH_LONG).show()
+            },
+            onSkip = {
+                showFaceVerification = false
+                Toast.makeText(context, "Face verification skipped", Toast.LENGTH_SHORT).show()
+            }
+        )
+        return
     }
 
     Column(
@@ -111,11 +148,9 @@ fun MainAppContent(
             ) {
                 QRCodeScanner(
                     onQrCodeScanned = { boxId ->
-                        // Display boxId as toast when QR code is scanned
-                        Toast.makeText(context, "Box ID: $boxId", Toast.LENGTH_LONG).show()
-
-                        // After scanning, return to the main screen
+                        // After QR code is scanned, start face verification
                         isScanningActive = false
+                        showFaceVerification = true
                     },
                     modifier = Modifier
                         .size(300.dp)  // Fixed size for the scanner

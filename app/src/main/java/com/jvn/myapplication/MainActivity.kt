@@ -1,4 +1,4 @@
-// File: MainActivity.kt
+// File: MainActivity.kt (Back to original flow)
 package com.jvn.myapplication
 
 import android.os.Bundle
