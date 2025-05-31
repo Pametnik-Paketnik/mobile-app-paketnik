@@ -20,21 +20,23 @@ object NetworkModule {
         .writeTimeout(60, TimeUnit.SECONDS)
         .build()
 
-    val authApi: AuthApiService by lazy {
+    private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
-            .create(AuthApiService::class.java)
+    }
+
+    val authApi: AuthApiService by lazy {
+        retrofit.create(AuthApiService::class.java)
     }
 
     val faceVerificationApi: FaceVerificationApiService by lazy {
-        Retrofit.Builder()
-            .baseUrl(BASE_URL)
-            .client(okHttpClient)
-            .addConverterFactory(GsonConverterFactory.create())
-            .build()
-            .create(FaceVerificationApiService::class.java)
+        retrofit.create(FaceVerificationApiService::class.java)
+    }
+
+    val boxApi: BoxApiService by lazy {
+        retrofit.create(BoxApiService::class.java)
     }
 }

@@ -31,9 +31,13 @@ class AuthRepository(private val context: Context) {
             if (response.isSuccessful && response.body() != null) {
                 val loginResponse = response.body()!!
                 if (loginResponse.success && loginResponse.access_token != null) {
-                    // Generate a user ID (in real app, this would come from backend)
-                    val userId = generateUserId(username)
-                    saveAuthData(loginResponse.access_token, username, userId)
+                    // Save authentication data including user type from login response
+                    saveAuthData(
+                        token = loginResponse.access_token,
+                        username = loginResponse.user.username,
+                        userId = loginResponse.user.id.toString(),
+                        userType = loginResponse.user.userType // Make sure this is included!
+                    )
                     Result.success("Login successful")
                 } else {
                     Result.failure(Exception(loginResponse.message))
