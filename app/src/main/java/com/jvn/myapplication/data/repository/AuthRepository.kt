@@ -1,4 +1,3 @@
-// File: data/repository/AuthRepository.kt (Simplified)
 package com.jvn.myapplication.data.repository
 
 import android.content.Context
@@ -9,6 +8,8 @@ import com.jvn.myapplication.data.api.NetworkModule
 import com.jvn.myapplication.data.model.ErrorResponse
 import com.jvn.myapplication.data.model.LoginRequest
 import com.jvn.myapplication.data.model.RegisterRequest
+import com.jvn.myapplication.data.model.RegisterResponse
+import com.jvn.myapplication.data.model.User
 import com.jvn.myapplication.utils.dataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -21,6 +22,7 @@ class AuthRepository(private val context: Context) {
         private val TOKEN_KEY = stringPreferencesKey("auth_token")
         private val USERNAME_KEY = stringPreferencesKey("username")
         private val USER_ID_KEY = stringPreferencesKey("user_id")
+        private val USER_TYPE_KEY = stringPreferencesKey("user_type")
     }
 
     suspend fun login(username: String, password: String): Result<String> {
@@ -52,12 +54,26 @@ class AuthRepository(private val context: Context) {
         }
     }
 
-    suspend fun register(username: String, password: String, confirmPassword: String): Result<String> {
+    suspend fun register(username: String, password: String, userType: String): RegisterResponse {
         return try {
-            val response = authApi.register(RegisterRequest(username, password, confirmPassword))
+            val request = RegisterRequest(
+                username = username,
+                password = password,
+                userType = userType
+            )
+            val response = authApi.register(request)
             if (response.isSuccessful && response.body() != null) {
                 val registerResponse = response.body()!!
-                Result.success(registerResponse.message)
+                if (registerResponse.success) {
+                    // Save authentication data
+                    saveAuthData(
+                        token = registerResponse.access_token,
+                        username = registerResponse.user.username,
+                        userId = registerResponse.user.id.toString(),
+                        userType = registerResponse.user.userType
+                    )
+                }
+                registerResponse
             } else {
                 val errorBody = response.errorBody()?.string()
                 val errorMessage = try {
@@ -67,10 +83,20 @@ class AuthRepository(private val context: Context) {
                 } catch (e: Exception) {
                     "Registration failed: ${response.message()}"
                 }
-                Result.failure(Exception(errorMessage))
+                RegisterResponse(
+                    success = false,
+                    message = errorMessage,
+                    access_token = "",
+                    user = User(id = 0, username = "", userType = "")
+                )
             }
         } catch (e: Exception) {
-            Result.failure(e)
+            RegisterResponse(
+                success = false,
+                message = e.message ?: "Registration failed",
+                access_token = "",
+                user = User(id = 0, username = "", userType = "")
+            )
         }
     }
 
@@ -105,11 +131,17 @@ class AuthRepository(private val context: Context) {
         }
     }
 
-    private suspend fun saveAuthData(token: String, username: String, userId: String) {
+    private suspend fun saveAuthData(
+        token: String,
+        username: String,
+        userId: String,
+        userType: String? = null
+    ) {
         context.dataStore.edit { preferences ->
             preferences[TOKEN_KEY] = token
             preferences[USERNAME_KEY] = username
             preferences[USER_ID_KEY] = userId
+            userType?.let { preferences[USER_TYPE_KEY] = it }
         }
     }
 
@@ -133,6 +165,12 @@ class AuthRepository(private val context: Context) {
     fun getUsername(): Flow<String?> {
         return context.dataStore.data.map { preferences ->
             preferences[USERNAME_KEY]
+        }
+    }
+
+    fun getUserType(): Flow<String?> {
+        return context.dataStore.data.map { preferences ->
+            preferences[USER_TYPE_KEY]
         }
     }
 }

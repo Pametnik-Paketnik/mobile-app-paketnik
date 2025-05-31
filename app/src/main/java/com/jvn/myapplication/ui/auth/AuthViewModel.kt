@@ -1,4 +1,3 @@
-// File: ui/auth/AuthViewModel.kt
 package com.jvn.myapplication.ui.auth
 
 import androidx.lifecycle.ViewModel
@@ -34,43 +33,44 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
         }
     }
 
-    fun register(username: String, password: String, confirmPassword: String) {
+    fun register(username: String, password: String, confirmPassword: String, userType: String) {
+        if (password != confirmPassword) {
+            _uiState.value = _uiState.value.copy(
+                errorMessage = "Passwords do not match",
+                isLoading = false
+            )
+            return
+        }
+
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            _uiState.value = _uiState.value.copy(
+                isLoading = true,
+                errorMessage = null,
+                successMessage = null
+            )
 
-            authRepository.register(username, password, confirmPassword)
-                .onSuccess { message ->
-                    // Show success message first
+            try {
+                val response = authRepository.register(username, password, userType)
+                if (response.success) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        registrationSuccess = true,
-                        successMessage = "Registration successful! Redirecting..."
+                        isAuthenticated = true,
+                        successMessage = response.message,
+                        errorMessage = null
                     )
-
-                    // Wait 2 seconds before auto-login
-                    kotlinx.coroutines.delay(1000)
-
-                    // After successful registration, automatically log the user in
-                    authRepository.login(username, password)
-                        .onSuccess {
-                            _uiState.value = _uiState.value.copy(
-                                isAuthenticated = true
-                            )
-                        }
-                        .onFailure {
-                            // Registration was successful but auto-login failed
-                            _uiState.value = _uiState.value.copy(
-                                successMessage = "Registration successful! Please login manually.",
-                                registrationSuccess = false
-                            )
-                        }
-                }
-                .onFailure { exception ->
+                    // Note: Token and user info are already saved in the repository
+                } else {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
-                        errorMessage = exception.message ?: "Network error"
+                        errorMessage = response.message
                     )
                 }
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = e.message ?: "Registration failed"
+                )
+            }
         }
     }
 

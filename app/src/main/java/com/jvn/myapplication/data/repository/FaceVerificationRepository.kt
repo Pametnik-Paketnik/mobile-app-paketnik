@@ -41,6 +41,16 @@ class FaceVerificationRepository(private val context: Context) {
 
     suspend fun processVideoAndSubmit(videoUri: Uri, userId: String): Result<String> {
         return try {
+            Log.d("FaceVerification", "Processing video: $videoUri")
+
+            // Check if file exists
+            val fileDescriptor = context.contentResolver.openFileDescriptor(videoUri, "r")
+            if (fileDescriptor == null) {
+                Log.e("FaceVerification", "Cannot open video file")
+                return Result.failure(Exception("Cannot open video file"))
+            }
+            fileDescriptor.close()
+
             val sessionId = UUID.randomUUID().toString()
             val startTime = System.currentTimeMillis()
 
@@ -54,54 +64,67 @@ class FaceVerificationRepository(private val context: Context) {
             // Select best frames
             val selectedFrames = selectBestFrames(processedFrames)
 
-            // Create metadata
-            val metadata = createMetadata(
-                sessionId = sessionId,
-                userId = userId,
-                timestamp = startTime,
-                captureCompletedAt = captureCompletedAt,
-                originalFrames = frameData,
-                processedFrames = processedFrames,
-                selectedFrames = selectedFrames
-            )
-
-            // Convert selected frames to base64
-            val framesBase64 = selectedFrames.map { frame ->
-                bitmapToBase64(frame.bitmap, 80)
+            if (selectedFrames.isEmpty()) {
+                return Result.failure(Exception("No suitable frames found for verification"))
             }
 
-            // Submit to backend
-            val token = getAuthToken().first()
-            if (token.isNullOrEmpty()) {
-                return Result.failure(Exception("No auth token available"))
-            }
+            // Split frames into batches of 2 (reduced from 3)
+            val batches = selectedFrames.chunked(2)
+            Log.d("FaceVerification", "Sending ${batches.size} batches with total ${selectedFrames.size} frames")
 
-            val request = FaceVerificationRequest(
-                sessionId = sessionId,
-                metadata = metadata,
-                framesBase64 = framesBase64
-            )
+            for ((batchIndex, batch) in batches.withIndex()) {
+                Log.d("FaceVerification", "Processing batch ${batchIndex + 1}/${batches.size}")
 
-            val response = faceVerificationApi.submitFaceVerification("Bearer $token", request)
+                val framesBase64 = batch.map { frame ->
+                    bitmapToBase64(frame.bitmap, 50) // Reduced quality parameter
+                }
 
-            if (response.isSuccessful && response.body() != null) {
-                val verificationResponse = response.body()!!
-                if (verificationResponse.success) {
-                    Result.success("Face verification completed successfully")
+                val metadata = createBatchMetadata(
+                    sessionId = sessionId,
+                    userId = userId,
+                    timestamp = startTime,
+                    captureCompletedAt = captureCompletedAt,
+                    batchIndex = batchIndex,
+                    totalBatches = batches.size,
+                    originalFrames = frameData,
+                    processedFrames = processedFrames,
+                    selectedFrames = batch
+                )
+
+                val request = FaceVerificationRequest(
+                    sessionId = sessionId,
+                    metadata = metadata,
+                    framesBase64 = framesBase64
+                )
+
+                val token = getAuthToken().first()
+                if (token.isNullOrEmpty()) {
+                    return Result.failure(Exception("No auth token available"))
+                }
+
+                val response = faceVerificationApi.submitFaceVerification("Bearer $token", request)
+
+                if (response.isSuccessful && response.body() != null) {
+                    val verificationResponse = response.body()!!
+                    if (!verificationResponse.success) {
+                        return Result.failure(Exception("Batch ${batchIndex + 1} failed: ${verificationResponse.message}"))
+                    }
                 } else {
-                    Result.failure(Exception(verificationResponse.message))
+                    val errorBody = response.errorBody()?.string()
+                    val errorMessage = try {
+                        val gson = Gson()
+                        val errorResponse = gson.fromJson(errorBody, ErrorResponse::class.java)
+                        errorResponse.message
+                    } catch (e: Exception) {
+                        "Batch ${batchIndex + 1} failed: ${response.message()}"
+                    }
+                    return Result.failure(Exception(errorMessage))
                 }
-            } else {
-                val errorBody = response.errorBody()?.string()
-                val errorMessage = try {
-                    val gson = Gson()
-                    val errorResponse = gson.fromJson(errorBody, ErrorResponse::class.java)
-                    errorResponse.message
-                } catch (e: Exception) {
-                    "Face verification failed: ${response.message()}"
-                }
-                Result.failure(Exception(errorMessage))
+
+                Log.d("FaceVerification", "Batch ${batchIndex + 1} sent successfully")
             }
+
+            Result.success("Face verification completed successfully")
 
         } catch (e: Exception) {
             Log.e("FaceVerificationRepo", "Error processing video", e)
@@ -117,6 +140,8 @@ class FaceVerificationRepository(private val context: Context) {
             retriever.setDataSource(context, videoUri)
 
             val duration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0L
+            Log.d("FaceVerification", "Video duration: $duration ms")
+
             val frameRate = 30 // Assume 30fps
             val intervalMs = 200L // Extract frame every 200ms (5 fps)
 
@@ -127,11 +152,14 @@ class FaceVerificationRepository(private val context: Context) {
                 try {
                     val bitmap = retriever.getFrameAtTime(currentTime * 1000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                     if (bitmap != null) {
+                        Log.d("FaceVerification", "Extracted frame $frameIndex at $currentTime ms")
                         frames.add(FrameData(
                             bitmap = bitmap,
                             timestampMs = currentTime,
                             frameIndex = frameIndex++
                         ))
+                    } else {
+                        Log.w("FaceVerification", "Failed to extract bitmap at $currentTime ms")
                     }
                 } catch (e: Exception) {
                     Log.w("FaceVerificationRepo", "Failed to extract frame at $currentTime ms", e)
@@ -139,6 +167,8 @@ class FaceVerificationRepository(private val context: Context) {
 
                 currentTime += intervalMs
             }
+
+            Log.d("FaceVerification", "Total frames extracted: ${frames.size}")
 
         } finally {
             retriever.release()
@@ -150,10 +180,14 @@ class FaceVerificationRepository(private val context: Context) {
     private suspend fun processFramesWithFaceDetection(frames: List<FrameData>): List<ProcessedFrame> {
         val processedFrames = mutableListOf<ProcessedFrame>()
 
+        Log.d("FaceVerification", "Processing ${frames.size} frames for face detection")
+
         for (frame in frames) {
             try {
                 val inputImage = InputImage.fromBitmap(frame.bitmap, 0)
                 val faces = detector.process(inputImage).await()
+
+                Log.d("FaceVerification", "Frame ${frame.frameIndex}: detected ${faces.size} faces")
 
                 if (faces.isNotEmpty()) {
                     val face = faces[0] // Use the first detected face
@@ -172,23 +206,32 @@ class FaceVerificationRepository(private val context: Context) {
             }
         }
 
+        Log.d("FaceVerification", "Processed frames with faces: ${processedFrames.size}")
         return processedFrames
     }
 
     private fun selectBestFrames(processedFrames: List<ProcessedFrame>): List<ProcessedFrame> {
-        // Sort by face confidence and select top frames
-        return processedFrames
-            .filter { !it.isBlurry && it.faceConfidence > 0.7f }
+        Log.d("FaceVerification", "Selecting from ${processedFrames.size} processed frames")
+
+        val filtered = processedFrames.filter { !it.isBlurry && it.faceConfidence > 0.57f }
+        Log.d("FaceVerification", "After filtering: ${filtered.size} frames")
+
+        val selected = filtered
             .sortedByDescending { it.faceConfidence }
             .take(10) // Select top 10 frames
             .sortedBy { it.frameData.timestampMs } // Sort back by timestamp
+
+        Log.d("FaceVerification", "Final selected frames: ${selected.size}")
+        return selected
     }
 
-    private fun createMetadata(
+    private fun createBatchMetadata(
         sessionId: String,
         userId: String,
         timestamp: Long,
         captureCompletedAt: Long,
+        batchIndex: Int,
+        totalBatches: Int,
         originalFrames: List<FrameData>,
         processedFrames: List<ProcessedFrame>,
         selectedFrames: List<ProcessedFrame>
@@ -205,7 +248,7 @@ class FaceVerificationRepository(private val context: Context) {
             totalCaptureTimeMs = captureCompletedAt - timestamp,
             originalFrameCount = originalFrames.size,
             selectedFrameCount = selectedFrames.size,
-            frameSelectionCriteria = "confidence_and_quality_based",
+            frameSelectionCriteria = "confidence_and_quality_based_batch_${batchIndex + 1}_of_$totalBatches",
             averageFaceConfidence = confidences.average().toFloat(),
             minFaceConfidence = confidences.minOrNull() ?: 0f,
             maxFaceConfidence = confidences.maxOrNull() ?: 0f,
@@ -213,7 +256,7 @@ class FaceVerificationRepository(private val context: Context) {
             lightingQuality = assessOverallLightingQuality(processedFrames),
             deviceModel = Build.MODEL,
             androidVersion = Build.VERSION.RELEASE,
-            cameraResolution = "${originalFrames.firstOrNull()?.bitmap?.width ?: 0}x${originalFrames.firstOrNull()?.bitmap?.height ?: 0}",
+            cameraResolution = "320x240", // Updated to reflect resized images
             orientationChanges = 0, // Could be tracked during capture
             frameMetrics = selectedFrames.map { createFrameMetric(it) }
         )
@@ -240,7 +283,7 @@ class FaceVerificationRepository(private val context: Context) {
             ),
             eyesOpen = (face.leftEyeOpenProbability ?: 0.5f) > 0.5f && (face.rightEyeOpenProbability ?: 0.5f) > 0.5f,
             isBlurry = processedFrame.isBlurry,
-            compressionQuality = 80
+            compressionQuality = 50
         )
     }
 
@@ -289,10 +332,27 @@ class FaceVerificationRepository(private val context: Context) {
     }
 
     private fun bitmapToBase64(bitmap: Bitmap, quality: Int): String {
+        // Resize bitmap to smaller dimensions (320x240)
+        val resizedBitmap = resizeBitmap(bitmap, 320, 240)
+
         val byteArrayOutputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.JPEG, quality, byteArrayOutputStream)
+        resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream) // Reduced quality to 50
         val byteArray = byteArrayOutputStream.toByteArray()
         return Base64.encodeToString(byteArray, Base64.DEFAULT)
+    }
+
+    private fun resizeBitmap(bitmap: Bitmap, maxWidth: Int, maxHeight: Int): Bitmap {
+        val width = bitmap.width
+        val height = bitmap.height
+
+        val scaleWidth = maxWidth.toFloat() / width
+        val scaleHeight = maxHeight.toFloat() / height
+        val scale = minOf(scaleWidth, scaleHeight)
+
+        val matrix = Matrix()
+        matrix.postScale(scale, scale)
+
+        return Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, false)
     }
 
     private fun getAuthToken() = context.dataStore.data.map { preferences ->

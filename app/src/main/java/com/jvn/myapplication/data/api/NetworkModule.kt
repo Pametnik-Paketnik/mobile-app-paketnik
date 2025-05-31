@@ -1,4 +1,3 @@
-// File: data/api/NetworkModule.kt (Updated)
 package com.jvn.myapplication.data.api
 
 import okhttp3.OkHttpClient
@@ -8,7 +7,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object NetworkModule {
-    private const val BASE_URL = "https://5c09-176-76-224-127.ngrok-free.app"
+    private const val BASE_URL = "https://6869-86-58-115-226.ngrok-free.app"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
