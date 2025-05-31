@@ -31,13 +31,19 @@ class AuthRepository(private val context: Context) {
             if (response.isSuccessful && response.body() != null) {
                 val loginResponse = response.body()!!
                 if (loginResponse.success && loginResponse.access_token != null) {
-                    // Save authentication data including user type from login response
+                    // CRITICAL FIX: Save the REAL user ID from API response
                     saveAuthData(
                         token = loginResponse.access_token,
                         username = loginResponse.user.username,
-                        userId = loginResponse.user.id.toString(),
-                        userType = loginResponse.user.userType // Make sure this is included!
+                        userId = loginResponse.user.id.toString(), // Use real ID: "3" not "user_john_doe_123"
+                        userType = loginResponse.user.userType
                     )
+
+                    // Debug: Print what we're saving
+                    println("🔍 DEBUG - AuthRepository: Saving real user ID: ${loginResponse.user.id}")
+                    println("🔍 DEBUG - AuthRepository: Username: ${loginResponse.user.username}")
+                    println("🔍 DEBUG - AuthRepository: UserType: ${loginResponse.user.userType}")
+
                     Result.success("Login successful")
                 } else {
                     Result.failure(Exception(loginResponse.message))
@@ -105,33 +111,51 @@ class AuthRepository(private val context: Context) {
     }
 
     suspend fun logout() {
+        println("🔍 DEBUG - AuthRepository: Starting logout process")
+
         val token = getAuthToken().first()
         if (!token.isNullOrEmpty()) {
             try {
-                // Call backend logout API
+                println("🔍 DEBUG - AuthRepository: Calling backend logout API")
                 val response = authApi.logout("Bearer $token")
                 if (response.isSuccessful) {
-                    // Backend logout successful, clear local storage
-                    context.dataStore.edit { preferences ->
-                        preferences.clear()
-                    }
+                    println("🔍 DEBUG - AuthRepository: Backend logout successful")
                 } else {
-                    // Backend logout failed, but still clear local storage
-                    context.dataStore.edit { preferences ->
-                        preferences.clear()
-                    }
+                    println("🔍 DEBUG - AuthRepository: Backend logout failed: ${response.code()}")
                 }
             } catch (e: Exception) {
-                // Network error, but still clear local storage
-                context.dataStore.edit { preferences ->
-                    preferences.clear()
-                }
+                println("🔍 DEBUG - AuthRepository: Backend logout exception: ${e.message}")
             }
-        } else {
-            // No token to logout, just clear local storage
+        }
+
+        // CRITICAL: Always clear local storage regardless of backend response
+        println("🔍 DEBUG - AuthRepository: Clearing local DataStore")
+        try {
             context.dataStore.edit { preferences ->
+                val sizeBefore = preferences.asMap().size
+                println("🔍 DEBUG - AuthRepository: DataStore contained $sizeBefore entries before clear")
+
                 preferences.clear()
+
+                val sizeAfter = preferences.asMap().size
+                println("🔍 DEBUG - AuthRepository: DataStore contains $sizeAfter entries after clear")
             }
+
+            // Verify clearing worked
+            val userIdAfterClear = getUserId().first()
+            val usernameAfterClear = getUsername().first()
+            val userTypeAfterClear = getUserType().first()
+            val tokenAfterClear = getAuthToken().first()
+
+            println("🔍 DEBUG - AuthRepository: After clear verification:")
+            println("🔍 DEBUG - UserId: '$userIdAfterClear'")
+            println("🔍 DEBUG - Username: '$usernameAfterClear'")
+            println("🔍 DEBUG - UserType: '$userTypeAfterClear'")
+            println("🔍 DEBUG - Token: '${tokenAfterClear?.take(20)}...'")
+
+        } catch (e: Exception) {
+            println("🔍 DEBUG - AuthRepository: DataStore clear failed: ${e.message}")
+            e.printStackTrace()
         }
     }
 

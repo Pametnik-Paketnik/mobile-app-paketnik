@@ -20,7 +20,7 @@ interface BoxApiService {
     ): Response<List<UnlockHistory>>
 
     @GET("api/boxes/opening-history/user/{userId}")
-    suspend fun getOpeningHistoryByUser(
+    suspend fun getUnlockHistoryByUser(
         @Path("userId") userId: String,
         @Header("Authorization") token: String
     ): Response<List<UnlockHistory>>

@@ -15,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -33,7 +34,6 @@ import com.jvn.myapplication.data.repository.FaceVerificationRepository
 import com.jvn.myapplication.ui.face.FaceVerificationScreen
 import com.jvn.myapplication.ui.face.FaceVerificationViewModel
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,25 +62,24 @@ fun MainAppContent(
     var isScanningActive by remember { mutableStateOf(false) }
     var showFaceVerification by remember { mutableStateOf(false) }
     var showUnlockHistory by remember { mutableStateOf(false) }
-    var userId by remember { mutableStateOf<String?>(null) }
-    var username by remember { mutableStateOf<String?>(null) }
-    var userType by remember { mutableStateOf<String?>(null) }
+    var showRecentActivity by remember { mutableStateOf(false) }
+    
+    // FIXED: Use reactive flows instead of cached remember values
+    val userId by authRepository.getUserId().collectAsState(initial = null)
+    val username by authRepository.getUsername().collectAsState(initial = null)
+    val userType by authRepository.getUserType().collectAsState(initial = null)
 
     // Animation state
     var isContentVisible by remember { mutableStateOf(false) }
 
-    // Load user data
-    LaunchedEffect(Unit) {
-        userId = authRepository.getUserId().first()
-        username = authRepository.getUsername().first()
-        userType = authRepository.getUserType().first()
+    // FIXED: React to user changes instead of loading once
+    LaunchedEffect(userId, username, userType) {
+        // Debug prints - now these will update when user changes
+        println("🔍 DEBUG - MainAppContent: User ID from storage: '$userId'")
+        println("🔍 DEBUG - MainAppContent: Username: '$username'")
+        println("🔍 DEBUG - MainAppContent: User Type: '$userType'")
 
-        // Debug prints
-        println("🔍 DEBUG - User ID: $userId")
-        println("🔍 DEBUG - Username: $username")
-        println("🔍 DEBUG - User Type: $userType")
-
-        delay(300) // Small delay for smooth animation
+        delay(300)
         isContentVisible = true
     }
 
@@ -114,20 +113,18 @@ fun MainAppContent(
             return
         }
 
+        showRecentActivity && userId != null -> {
+            com.jvn.myapplication.ui.activity.RecentActivityScreen(
+                userId = userId!!,
+                onBack = { showRecentActivity = false }
+            )
+            return
+        }
+
         showUnlockHistory -> {
-            // Placeholder for history screen - you'll need to import the actual one
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("🏗️ Unlock History Screen")
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = { showUnlockHistory = false }) {
-                        Text("Back")
-                    }
-                }
-            }
+            com.jvn.myapplication.ui.unlock.UnlockHistoryScreen(
+                onBack = { showUnlockHistory = false }
+            )
             return
         }
     }
@@ -492,7 +489,7 @@ fun MainAppContent(
                             subtitle = "Activity",
                             color = accentBlue
                         ) {
-                            Toast.makeText(context, "Recent activity", Toast.LENGTH_SHORT).show()
+                            showRecentActivity = true
                         }
 
                         QuickActionCard(

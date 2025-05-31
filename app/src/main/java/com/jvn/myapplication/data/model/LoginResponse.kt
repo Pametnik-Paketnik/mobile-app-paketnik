@@ -6,6 +6,6 @@ data class LoginResponse(
     val success: Boolean,
     val message: String,
     val access_token: String,
-    val user: User
+    val user: User  // Make sure this includes id, username, userType
 )
 
