@@ -27,23 +27,30 @@ fun MainNavigation(
         containerColor = softGray,
         bottomBar = {
             BottomNavigationBar(navController = navController)
-        }
+        },
+        contentWindowInsets = WindowInsets(0, 0, 0, 0) // Remove default insets
     ) { paddingValues ->
-        NavHost(
-            navController = navController,
-            startDestination = BottomNavItem.Home.route,
-            modifier = Modifier.padding(paddingValues)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
         ) {
-            composable(BottomNavItem.Home.route) {
-                HomeScreen()
-            }
-            
-            composable(BottomNavItem.BoxesHistory.route) {
-                BoxesHistoryScreen()
-            }
-            
-            composable(BottomNavItem.UserSettings.route) {
-                UserSettingsScreen(onLogout = onLogout)
+            NavHost(
+                navController = navController,
+                startDestination = BottomNavItem.Home.route,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                composable(BottomNavItem.Home.route) {
+                    HomeScreen()
+                }
+                
+                composable(BottomNavItem.BoxesHistory.route) {
+                    BoxesHistoryScreen()
+                }
+                
+                composable(BottomNavItem.UserSettings.route) {
+                    UserSettingsScreen(onLogout = onLogout)
+                }
             }
         }
     }

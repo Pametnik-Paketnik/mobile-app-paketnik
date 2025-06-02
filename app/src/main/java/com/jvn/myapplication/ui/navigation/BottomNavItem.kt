@@ -1,7 +1,7 @@
 package com.jvn.myapplication.ui.navigation
 
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -20,7 +20,7 @@ sealed class BottomNavItem(
     object BoxesHistory : BottomNavItem(
         route = "boxes_history",
         title = "History",
-        icon = Icons.Default.History
+        icon = Icons.Default.Info
     )
     
     object UserSettings : BottomNavItem(

@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -31,20 +32,27 @@ fun BottomNavigationBar(
     val textDark = Color(0xFF2E2E2E)
     val textLight = Color(0xFF757575)
 
-    Card(
+    Surface(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .shadow(
+                elevation = 16.dp,
+                shape = RoundedCornerShape(28.dp),
+                clip = false
+            ),
+        shape = RoundedCornerShape(28.dp),
+        color = Color.White,
+        tonalElevation = 8.dp
     ) {
         NavigationBar(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(72.dp),
+                .height(80.dp)
+                .background(Color.White, RoundedCornerShape(28.dp)),
             containerColor = Color.Transparent,
-            tonalElevation = 0.dp
+            tonalElevation = 0.dp,
+            windowInsets = WindowInsets(0, 0, 0, 0)
         ) {
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
@@ -66,7 +74,7 @@ fun BottomNavigationBar(
                 )
                 
                 val scale by animateFloatAsState(
-                    targetValue = if (isSelected) 1.1f else 1f,
+                    targetValue = if (isSelected) 1.0f else 0.9f,
                     animationSpec = tween(300),
                     label = "scale"
                 )
@@ -94,7 +102,7 @@ fun BottomNavigationBar(
                     label = {
                         Text(
                             text = item.title,
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             color = if (isSelected) primaryTeal else textLight
                         )

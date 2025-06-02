@@ -162,13 +162,13 @@ fun UserSettingsScreen(
                             onClick = { /* TODO: Navigate to profile edit */ }
                         ),
                         SettingsItem(
-                            icon = Icons.Default.Security,
+                            icon = Icons.Default.Lock,
                             title = "Security & Privacy",
                             subtitle = "Manage your security settings",
                             onClick = { /* TODO: Navigate to security settings */ }
                         ),
                         SettingsItem(
-                            icon = Icons.Default.Key,
+                            icon = Icons.Default.Build,
                             title = "Change Password",
                             subtitle = "Update your login credentials",
                             onClick = { /* TODO: Navigate to password change */ }
@@ -195,13 +195,13 @@ fun UserSettingsScreen(
                             onClick = { /* TODO: Navigate to notification settings */ }
                         ),
                         SettingsItem(
-                            icon = Icons.Default.CameraAlt,
+                            icon = Icons.Default.Face,
                             title = "Camera Settings",
                             subtitle = "QR scanner preferences",
                             onClick = { /* TODO: Navigate to camera settings */ }
                         ),
                         SettingsItem(
-                            icon = Icons.Default.Palette,
+                            icon = Icons.Default.AccountCircle,
                             title = "Appearance",
                             subtitle = "Theme and display options",
                             onClick = { /* TODO: Navigate to appearance settings */ }
@@ -222,7 +222,7 @@ fun UserSettingsScreen(
                     title = "Support",
                     items = listOf(
                         SettingsItem(
-                            icon = Icons.Default.Help,
+                            icon = Icons.Default.Search,
                             title = "Help & Support",
                             subtitle = "Get help and contact support",
                             onClick = { /* TODO: Navigate to help */ }
@@ -234,7 +234,7 @@ fun UserSettingsScreen(
                             onClick = { /* TODO: Show about dialog */ }
                         ),
                         SettingsItem(
-                            icon = Icons.Default.Feedback,
+                            icon = Icons.Default.Email,
                             title = "Send Feedback",
                             subtitle = "Help us improve the app",
                             onClick = { /* TODO: Open feedback form */ }
@@ -301,7 +301,7 @@ fun UserSettingsScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(100.dp)) // Space for bottom navigation
+            Spacer(modifier = Modifier.height(24.dp)) // Reduced spacing for proper layout
         }
     }
 
@@ -328,6 +328,7 @@ fun UserSettingsScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        println("🔍 DEBUG - UserSettingsScreen: Logout button clicked")
                         onLogout()
                         showLogoutDialog = false
                     },

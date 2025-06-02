@@ -458,7 +458,7 @@ fun HomeScreen() {
                     }
                 }
 
-                Spacer(modifier = Modifier.height(100.dp)) // Extra space for bottom navigation
+                Spacer(modifier = Modifier.height(24.dp)) // Reduced spacing
             }
         }
     }
