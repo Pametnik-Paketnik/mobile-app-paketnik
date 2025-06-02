@@ -1,4 +1,4 @@
-// File: MainActivity.kt (Back to original flow)
+// File: MainActivity.kt (Updated with Tab Navigation)
 package com.jvn.myapplication
 
 import android.os.Bundle
@@ -18,8 +18,8 @@ import com.jvn.myapplication.data.repository.AuthRepository
 import com.jvn.myapplication.ui.auth.AuthScreen
 import com.jvn.myapplication.ui.auth.AuthViewModel
 import com.jvn.myapplication.ui.main.AuthState
-import com.jvn.myapplication.ui.main.MainAppContent
 import com.jvn.myapplication.ui.main.MainAuthViewModel
+import com.jvn.myapplication.ui.navigation.MainNavigation
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,8 +63,8 @@ fun Direct4meApp() {
             )
         }
         AuthState.AUTHENTICATED -> {
-            // Show main app if authenticated
-            MainAppContent(
+            // Show main app with tab navigation
+            MainNavigation(
                 onLogout = {
                     mainAuthViewModel.logout()
                 }

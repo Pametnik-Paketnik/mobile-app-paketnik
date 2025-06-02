@@ -85,5 +85,8 @@ dependencies {
 
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
 
+    // Navigation Compose for bottom tabs
+    implementation("androidx.navigation:navigation-compose:2.7.6")
+    implementation("androidx.navigation:navigation-runtime-ktx:2.7.6")
 
 }
