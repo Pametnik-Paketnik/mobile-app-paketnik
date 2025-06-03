@@ -80,6 +80,46 @@ class ReservationRepository(private val context: Context) {
         }
     }
 
+    suspend fun getReservationsByHost(hostId: Int): Result<List<Reservation>> {
+        return try {
+            println("🔍 DEBUG - ReservationRepository.getReservationsByHost(): Starting for hostId: $hostId")
+            
+            val token = authRepository.getAuthToken().first()
+            if (token.isNullOrEmpty()) {
+                println("🔍 DEBUG - ReservationRepository.getReservationsByHost(): ERROR - No authentication token")
+                return Result.failure(Exception("No authentication token"))
+            }
+
+            println("🔍 DEBUG - ReservationRepository.getReservationsByHost(): Token found, making API call to /api/reservations/host/$hostId")
+            
+            val response = reservationApi.getReservationsByHost(hostId.toString(), "Bearer $token")
+            
+            println("🔍 DEBUG - ReservationRepository.getReservationsByHost(): API response received")
+            println("🔍 DEBUG - Response code: ${response.code()}")
+            println("🔍 DEBUG - Response successful: ${response.isSuccessful}")
+            println("🔍 DEBUG - Response body null: ${response.body() == null}")
+            
+            if (response.isSuccessful && response.body() != null) {
+                val reservations = response.body()!!
+                println("🔍 DEBUG - ReservationRepository: Got ${reservations.size} reservations for host")
+                reservations.forEachIndexed { index, reservation ->
+                    println("🔍 DEBUG - Reservation $index: ID=${reservation.id}, Status=${reservation.status}, HostId=${reservation.host?.id}, BoxId=${reservation.box?.boxId}")
+                }
+                Result.success(reservations)
+            } else {
+                val errorBody = response.errorBody()?.string()
+                val errorMessage = "Failed to fetch host reservations: ${response.message()}"
+                println("🔍 DEBUG - ReservationRepository: $errorMessage")
+                println("🔍 DEBUG - Error body: $errorBody")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            println("🔍 DEBUG - ReservationRepository: Exception in getReservationsByHost: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
     private fun formatTimestamp(timestamp: String): String {
         return try {
             val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())

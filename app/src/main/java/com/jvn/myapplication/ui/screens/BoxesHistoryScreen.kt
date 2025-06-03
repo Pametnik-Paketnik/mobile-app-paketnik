@@ -19,9 +19,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.jvn.myapplication.data.repository.AuthRepository
-import com.jvn.myapplication.ui.activity.RecentActivityScreen
 import com.jvn.myapplication.ui.unlock.UnlockHistoryScreen
 import com.jvn.myapplication.ui.reservations.ReservationsScreen
+import com.jvn.myapplication.ui.host.HostReservationsScreen
+import com.jvn.myapplication.ui.host.HostBoxesScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,15 +54,27 @@ fun BoxesHistoryScreen() {
     // Handle different views
     when (selectedView) {
         "unlock_history" -> {
-            UnlockHistoryScreen(
-                onBack = { selectedView = "overview" }
-            )
+            userId?.let { id ->
+                UnlockHistoryScreen(
+                    hostId = id.toIntOrNull(),
+                    onBack = { selectedView = "overview" }
+                )
+            }
             return
         }
-        "recent_activity" -> {
+        "host_reservations" -> {
             userId?.let { id ->
-                RecentActivityScreen(
-                    userId = id,
+                HostReservationsScreen(
+                    hostId = id.toIntOrNull() ?: 0,
+                    onBack = { selectedView = "overview" }
+                )
+            }
+            return
+        }
+        "host_boxes" -> {
+            userId?.let { id ->
+                HostBoxesScreen(
+                    hostId = id.toIntOrNull() ?: 0,
                     onBack = { selectedView = "overview" }
                 )
             }
@@ -153,7 +166,7 @@ fun BoxesHistoryScreen() {
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Recent Activity Card
+                // All Reservations Card (for HOST users)
                 AnimatedVisibility(
                     visible = isContentVisible,
                     enter = slideInVertically(
@@ -167,7 +180,7 @@ fun BoxesHistoryScreen() {
                             .shadow(6.dp, RoundedCornerShape(20.dp)),
                         colors = CardDefaults.cardColors(containerColor = cardWhite),
                         shape = RoundedCornerShape(20.dp),
-                        onClick = { selectedView = "recent_activity" }
+                        onClick = { selectedView = "host_reservations" }
                     ) {
                         Row(
                             modifier = Modifier
@@ -196,13 +209,77 @@ fun BoxesHistoryScreen() {
                                 modifier = Modifier.weight(1f)
                             ) {
                                 Text(
-                                    "Recent Activity",
+                                    "All Reservations",
                                     style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold,
                                     color = textDark
                                 )
                                 Text(
-                                    "View your latest box interactions",
+                                    "Manage reservations for your boxes",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = textLight
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.ArrowForward,
+                                contentDescription = null,
+                                tint = textLight,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
+
+                // All Boxes Card (for HOST users)
+                AnimatedVisibility(
+                    visible = isContentVisible,
+                    enter = slideInVertically(
+                        initialOffsetY = { it },
+                        animationSpec = tween(800, delayMillis = 200)
+                    ) + fadeIn(animationSpec = tween(800, delayMillis = 200))
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(6.dp, RoundedCornerShape(20.dp)),
+                        colors = CardDefaults.cardColors(containerColor = cardWhite),
+                        shape = RoundedCornerShape(20.dp),
+                        onClick = { selectedView = "host_boxes" }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .background(
+                                        darkGray.copy(alpha = 0.1f),
+                                        RoundedCornerShape(16.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Home,
+                                    contentDescription = null,
+                                    tint = darkGray,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(20.dp))
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    "My Boxes",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = textDark
+                                )
+                                Text(
+                                    "View and manage your boxes",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = textLight
                                 )
@@ -222,8 +299,8 @@ fun BoxesHistoryScreen() {
                     visible = isContentVisible,
                     enter = slideInVertically(
                         initialOffsetY = { it },
-                        animationSpec = tween(800, delayMillis = 200)
-                    ) + fadeIn(animationSpec = tween(800, delayMillis = 200))
+                        animationSpec = tween(800, delayMillis = 300)
+                    ) + fadeIn(animationSpec = tween(800, delayMillis = 300))
                 ) {
                     Card(
                         modifier = Modifier
@@ -243,7 +320,7 @@ fun BoxesHistoryScreen() {
                                 modifier = Modifier
                                     .size(64.dp)
                                     .background(
-                                        darkGray.copy(alpha = 0.1f),
+                                        airbnbRed.copy(alpha = 0.1f),
                                         RoundedCornerShape(16.dp)
                                     ),
                                 contentAlignment = Alignment.Center
@@ -251,7 +328,7 @@ fun BoxesHistoryScreen() {
                                 Icon(
                                     imageVector = Icons.Default.Lock,
                                     contentDescription = null,
-                                    tint = darkGray,
+                                    tint = airbnbRed,
                                     modifier = Modifier.size(32.dp)
                                 )
                             }
@@ -266,7 +343,7 @@ fun BoxesHistoryScreen() {
                                     color = textDark
                                 )
                                 Text(
-                                    "Manage and monitor all box unlocks",
+                                    "Monitor unlock activity for your boxes",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = textLight
                                 )

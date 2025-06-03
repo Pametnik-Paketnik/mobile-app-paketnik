@@ -48,9 +48,18 @@ fun ReservationsScreen() {
 
     // Debug logging
     LaunchedEffect(userId) {
-        println("🔍 DEBUG - ReservationsScreen: User ID received: '$userId'")
-        println("🔍 DEBUG - ReservationsScreen: User ID type: ${userId?.javaClass?.simpleName}")
-        println("🔍 DEBUG - ReservationsScreen: User ID isEmpty: ${userId.isNullOrEmpty()}")
+        val currentUserId = userId
+        println("🔍 DEBUG - ReservationsScreen: User ID received: '$currentUserId'")
+        println("🔍 DEBUG - ReservationsScreen: User ID type: ${currentUserId?.javaClass?.simpleName}")
+        println("🔍 DEBUG - ReservationsScreen: User ID isEmpty: ${currentUserId.isNullOrEmpty()}")
+        
+        // Add more detailed checks
+        if (currentUserId != null) {
+            println("🔍 DEBUG - ReservationsScreen: User ID length: ${currentUserId.length}")
+            println("🔍 DEBUG - ReservationsScreen: User ID contents: '$currentUserId'")
+            val asInt = currentUserId.toIntOrNull()
+            println("🔍 DEBUG - ReservationsScreen: User ID as int: $asInt")
+        }
     }
 
     // Only create ViewModel when we have a valid user ID
@@ -70,9 +79,13 @@ fun ReservationsScreen() {
     LaunchedEffect(viewModel) {
         if (viewModel != null) {
             println("🔍 DEBUG - ReservationsScreen: ViewModel created, loading reservations")
+            println("🔍 DEBUG - ReservationsScreen: About to call viewModel.loadReservations()")
             viewModel.loadReservations()
+            println("🔍 DEBUG - ReservationsScreen: Called viewModel.loadReservations()")
         } else {
+            val currentUserId = userId
             println("🔍 DEBUG - ReservationsScreen: ViewModel is null, not loading reservations")
+            println("🔍 DEBUG - ReservationsScreen: Current userId: '$currentUserId'")
         }
         kotlinx.coroutines.delay(200)
         isContentVisible = true
@@ -151,94 +164,111 @@ fun ReservationsScreen() {
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            when {
-                uiState.isLoading -> {
-                    // Loading state
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        CircularProgressIndicator(color = airbnbRed)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            "Loading your reservations...",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = textLight
-                        )
-                    }
-                }
-                
-                uiState.errorMessage != null -> {
-                    // Error state
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = airbnbRed,
-                            modifier = Modifier.size(64.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            uiState.errorMessage!!,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = textDark,
-                            textAlign = TextAlign.Center
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(
-                            onClick = { viewModel?.loadReservations() ?: Unit },
-                            colors = ButtonDefaults.buttonColors(containerColor = airbnbRed)
+            // Add debug info at the top
+            val currentUserId = userId
+            if (currentUserId != null) {
+                Text(
+                    "DEBUG: UserId='$currentUserId', ViewModel=${if (viewModel != null) "Created" else "NULL"}, " +
+                    "Loading=${uiState.isLoading}, Reservations=${uiState.reservations.size}, " +
+                    "Error='${uiState.errorMessage}'",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = airbnbRed,
+                    modifier = Modifier.padding(8.dp)
+                )
+            }
+            
+            Column(
+                modifier = Modifier.fillMaxSize().padding(top = if (currentUserId != null) 60.dp else 0.dp)
+            ) {
+                when {
+                    uiState.isLoading -> {
+                        // Loading state
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
                         ) {
-                            Text("Retry")
+                            CircularProgressIndicator(color = airbnbRed)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                "Loading your reservations...",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = textLight
+                            )
                         }
                     }
-                }
-                
-                uiState.reservations.isEmpty() && !uiState.isLoading -> {
-                    // Empty state
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.DateRange,
-                            contentDescription = null,
-                            tint = textLight,
-                            modifier = Modifier.size(64.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            "No reservations found",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = textDark
-                        )
-                        Text(
-                            "Your box reservations will appear here",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = textLight,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-                
-                else -> {
-                    // Reservations list
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        items(uiState.reservations) { reservation ->
-                            ReservationCard(
-                                reservation = reservation,
-                                onCheckIn = { viewModel?.checkIn(reservation.id) ?: Unit },
-                                isCheckingIn = uiState.checkingInReservations.contains(reservation.id)
+                    
+                    uiState.errorMessage != null -> {
+                        // Error state
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = airbnbRed,
+                                modifier = Modifier.size(64.dp)
                             )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                uiState.errorMessage!!,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = textDark,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Button(
+                                onClick = { viewModel?.loadReservations() ?: Unit },
+                                colors = ButtonDefaults.buttonColors(containerColor = airbnbRed)
+                            ) {
+                                Text("Retry")
+                            }
+                        }
+                    }
+                    
+                    uiState.reservations.isEmpty() && !uiState.isLoading -> {
+                        // Empty state
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = null,
+                                tint = textLight,
+                                modifier = Modifier.size(64.dp)
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                "No reservations found",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = textDark
+                            )
+                            Text(
+                                "Your box reservations will appear here",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = textLight,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                    
+                    else -> {
+                        // Reservations list
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            items(uiState.reservations) { reservation ->
+                                ReservationCard(
+                                    reservation = reservation,
+                                    onCheckIn = { viewModel?.checkIn(reservation.id) ?: Unit },
+                                    isCheckingIn = uiState.checkingInReservations.contains(reservation.id)
+                                )
+                            }
                         }
                     }
                 }
@@ -315,30 +345,7 @@ private fun ReservationCard(
                 value = formatDate(reservation.checkoutAt)
             )
             
-            if (reservation.status == "PENDING" || reservation.status == "CHECKED_IN") {
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Button(
-                    onClick = onCheckIn,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = airbnbRed),
-                    shape = RoundedCornerShape(12.dp),
-                    enabled = !isCheckingIn
-                ) {
-                    if (isCheckingIn) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = Color.White
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Checking In...")
-                    } else {
-                        Icon(imageVector = Icons.Default.CheckCircle, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("CHECK IN", fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
+            // Removed check-in button for guests - check-in should be done through QR scanning or other means
         }
     }
 }
