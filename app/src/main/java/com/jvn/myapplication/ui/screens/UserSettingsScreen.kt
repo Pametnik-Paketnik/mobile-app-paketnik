@@ -30,14 +30,13 @@ import com.jvn.myapplication.data.repository.AuthRepository
 fun UserSettingsScreen(
     onLogout: () -> Unit = {}
 ) {
-    // Modern color palette
-    val primaryTeal = Color(0xFF008C9E)
-    val lightTeal = Color(0xFF4DB6AC)
-    val accentBlue = Color(0xFF2196F3)
-    val softGray = Color(0xFFF8F9FA)
+    // Airbnb-style color palette
+    val airbnbRed = Color(0xFFFF5A5F)
+    val darkGray = Color(0xFF484848)
+    val lightGray = Color(0xFFF7F7F7)
     val cardWhite = Color(0xFFFFFFFF)
-    val textDark = Color(0xFF2E2E2E)
-    val textLight = Color(0xFF757575)
+    val textDark = Color(0xFF484848)
+    val textLight = Color(0xFF767676)
 
     val context = LocalContext.current
     val authRepository = remember { AuthRepository(context) }
@@ -59,25 +58,19 @@ fun UserSettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(softGray)
+            .background(lightGray)
             .verticalScroll(rememberScrollState())
     ) {
-        // Beautiful gradient header
+        // Clean header with solid color
         Box(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Background gradient
+            // Solid background - no gradient
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(primaryTeal, lightTeal, accentBlue),
-                            startY = 0f,
-                            endY = 600f
-                        )
-                    )
+                    .height(140.dp)
+                    .background(airbnbRed)
             )
 
             // Profile section
@@ -328,7 +321,7 @@ fun UserSettingsScreen(
                 Icon(
                     imageVector = Icons.Default.ExitToApp,
                     contentDescription = null,
-                    tint = primaryTeal
+                    tint = airbnbRed
                 )
             },
             title = { 
@@ -347,7 +340,7 @@ fun UserSettingsScreen(
                         onLogout()
                         showLogoutDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = primaryTeal)
+                    colors = ButtonDefaults.buttonColors(containerColor = airbnbRed)
                 ) {
                     Text("Yes, logout")
                 }
@@ -367,7 +360,7 @@ private fun SettingsSection(
     items: List<SettingsItem>
 ) {
     val cardWhite = Color(0xFFFFFFFF)
-    val textDark = Color(0xFF2E2E2E)
+    val textDark = Color(0xFF484848)
 
     Card(
         modifier = Modifier
@@ -404,9 +397,9 @@ private fun SettingsSection(
 
 @Composable
 private fun SettingsItemRow(item: SettingsItem) {
-    val primaryTeal = Color(0xFF008C9E)
-    val textDark = Color(0xFF2E2E2E)
-    val textLight = Color(0xFF757575)
+    val airbnbRed = Color(0xFFFF5A5F)
+    val textDark = Color(0xFF484848)
+    val textLight = Color(0xFF767676)
 
     Row(
         modifier = Modifier
@@ -418,7 +411,7 @@ private fun SettingsItemRow(item: SettingsItem) {
             modifier = Modifier
                 .size(40.dp)
                 .background(
-                    primaryTeal.copy(alpha = 0.1f),
+                    airbnbRed.copy(alpha = 0.1f),
                     RoundedCornerShape(10.dp)
                 ),
             contentAlignment = Alignment.Center
@@ -426,7 +419,7 @@ private fun SettingsItemRow(item: SettingsItem) {
             Icon(
                 imageVector = item.icon,
                 contentDescription = null,
-                tint = primaryTeal,
+                tint = airbnbRed,
                 modifier = Modifier.size(20.dp)
             )
         }

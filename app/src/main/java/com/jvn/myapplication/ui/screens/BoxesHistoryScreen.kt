@@ -26,14 +26,13 @@ import com.jvn.myapplication.ui.unlock.UnlockHistoryScreen
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BoxesHistoryScreen() {
-    // Modern color palette
-    val primaryTeal = Color(0xFF008C9E)
-    val lightTeal = Color(0xFF4DB6AC)
-    val accentBlue = Color(0xFF2196F3)
-    val softGray = Color(0xFFF8F9FA)
+    // Airbnb-style color palette
+    val airbnbRed = Color(0xFFFF5A5F)
+    val darkGray = Color(0xFF484848)
+    val lightGray = Color(0xFFF7F7F7)
     val cardWhite = Color(0xFFFFFFFF)
-    val textDark = Color(0xFF2E2E2E)
-    val textLight = Color(0xFF757575)
+    val textDark = Color(0xFF484848)
+    val textLight = Color(0xFF767676)
 
     val context = LocalContext.current
     val authRepository = remember { AuthRepository(context) }
@@ -74,24 +73,18 @@ fun BoxesHistoryScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(softGray)
+            .background(lightGray)
     ) {
-        // Beautiful gradient header
+        // Clean header with solid color
         Box(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Background gradient
+            // Solid background - no gradient
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(primaryTeal, lightTeal, accentBlue),
-                            startY = 0f,
-                            endY = 500f
-                        )
-                    )
+                    .height(140.dp)
+                    .background(airbnbRed)
             )
 
             // Header content
@@ -177,7 +170,7 @@ fun BoxesHistoryScreen() {
                             modifier = Modifier
                                 .size(64.dp)
                                 .background(
-                                    accentBlue.copy(alpha = 0.1f),
+                                    airbnbRed.copy(alpha = 0.1f),
                                     RoundedCornerShape(16.dp)
                                 ),
                             contentAlignment = Alignment.Center
@@ -185,7 +178,7 @@ fun BoxesHistoryScreen() {
                             Icon(
                                 imageVector = Icons.Default.DateRange,
                                 contentDescription = null,
-                                tint = accentBlue,
+                                tint = airbnbRed,
                                 modifier = Modifier.size(32.dp)
                             )
                         }
@@ -242,7 +235,7 @@ fun BoxesHistoryScreen() {
                                 modifier = Modifier
                                     .size(64.dp)
                                     .background(
-                                        primaryTeal.copy(alpha = 0.1f),
+                                        darkGray.copy(alpha = 0.1f),
                                         RoundedCornerShape(16.dp)
                                     ),
                                 contentAlignment = Alignment.Center
@@ -250,7 +243,7 @@ fun BoxesHistoryScreen() {
                                 Icon(
                                     imageVector = Icons.Default.Lock,
                                     contentDescription = null,
-                                    tint = primaryTeal,
+                                    tint = darkGray,
                                     modifier = Modifier.size(32.dp)
                                 )
                             }
@@ -274,7 +267,7 @@ fun BoxesHistoryScreen() {
                                 modifier = Modifier
                                     .size(24.dp)
                                     .background(
-                                        primaryTeal.copy(alpha = 0.2f),
+                                        airbnbRed.copy(alpha = 0.2f),
                                         RoundedCornerShape(6.dp)
                                     ),
                                 contentAlignment = Alignment.Center
@@ -283,7 +276,7 @@ fun BoxesHistoryScreen() {
                                     "HOST",
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    color = primaryTeal
+                                    color = airbnbRed
                                 )
                             }
                         }

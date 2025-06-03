@@ -2,6 +2,7 @@ package com.jvn.myapplication.ui.auth
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -18,19 +19,28 @@ import androidx.compose.ui.unit.dp
 fun RegisterForm(
     authViewModel: AuthViewModel,
     uiState: AuthUiState,
-    tealColor: Color
+    airbnbColor: Color
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var selectedUserType by remember { mutableStateOf("USER") }
 
+    // Airbnb-style colors
+    val lightGray = Color(0xFFF7F7F7)
+    val textDark = Color(0xFF484848)
+
     OutlinedTextField(
         value = username,
         onValueChange = { username = it },
         label = { Text("Username") },
         modifier = Modifier.fillMaxWidth(),
-        singleLine = true
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = airbnbColor,
+            focusedLabelColor = airbnbColor
+        )
     )
 
     Spacer(modifier = Modifier.height(16.dp))
@@ -42,7 +52,12 @@ fun RegisterForm(
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
         visualTransformation = PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = airbnbColor,
+            focusedLabelColor = airbnbColor
+        )
     )
 
     Spacer(modifier = Modifier.height(16.dp))
@@ -54,29 +69,35 @@ fun RegisterForm(
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
         visualTransformation = PasswordVisualTransformation(),
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = airbnbColor,
+            focusedLabelColor = airbnbColor
+        )
     )
 
-    Spacer(modifier = Modifier.height(20.dp))
+    Spacer(modifier = Modifier.height(24.dp))
 
     // User Type Selection
     Text(
         text = "Account Type",
-        style = MaterialTheme.typography.bodyLarge,
-        fontWeight = FontWeight.Medium,
-        color = MaterialTheme.colorScheme.onSurface
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = textDark
     )
 
-    Spacer(modifier = Modifier.height(8.dp))
+    Spacer(modifier = Modifier.height(12.dp))
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-        )
+            containerColor = lightGray
+        ),
+        shape = RoundedCornerShape(16.dp)
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(20.dp)
         ) {
             // USER option
             Row(
@@ -87,27 +108,28 @@ fun RegisterForm(
                         onClick = { selectedUserType = "USER" },
                         role = Role.RadioButton
                     )
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(
                     selected = (selectedUserType == "USER"),
                     onClick = { selectedUserType = "USER" },
                     colors = RadioButtonDefaults.colors(
-                        selectedColor = tealColor
+                        selectedColor = airbnbColor
                     )
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(16.dp))
                 Column {
                     Text(
                         text = "Guest User",
                         style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Bold,
+                        color = textDark
                     )
                     Text(
                         text = "Make reservations and access boxes",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = textDark.copy(alpha = 0.7f)
                     )
                 }
             }
@@ -123,39 +145,43 @@ fun RegisterForm(
                         onClick = { selectedUserType = "HOST" },
                         role = Role.RadioButton
                     )
-                    .padding(vertical = 8.dp),
+                    .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(
                     selected = (selectedUserType == "HOST"),
                     onClick = { selectedUserType = "HOST" },
                     colors = RadioButtonDefaults.colors(
-                        selectedColor = tealColor
+                        selectedColor = airbnbColor
                     )
                 )
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(16.dp))
                 Column {
                     Text(
                         text = "Box Host",
                         style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
+                        fontWeight = FontWeight.Bold,
+                        color = textDark
                     )
                     Text(
                         text = "Manage boxes and handle reservations",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = textDark.copy(alpha = 0.7f)
                     )
                 }
             }
         }
     }
 
-    Spacer(modifier = Modifier.height(24.dp))
+    Spacer(modifier = Modifier.height(32.dp))
 
     Button(
         onClick = { authViewModel.register(username, password, confirmPassword, selectedUserType) },
-        modifier = Modifier.fillMaxWidth(),
-        colors = ButtonDefaults.buttonColors(containerColor = tealColor),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = airbnbColor),
+        shape = RoundedCornerShape(16.dp),
         enabled = !uiState.isLoading && username.isNotBlank() &&
                 password.isNotBlank() && confirmPassword.isNotBlank()
     ) {
@@ -165,25 +191,48 @@ fun RegisterForm(
                 color = Color.White
             )
         } else {
-            Text("Register")
+            Text(
+                "Create Account",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 
     uiState.successMessage?.let { message ->
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = message,
-            color = tealColor,
-            style = MaterialTheme.typography.bodySmall
-        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = airbnbColor.copy(alpha = 0.1f)
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(
+                text = message,
+                color = airbnbColor,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
     }
 
     uiState.errorMessage?.let { error ->
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = error,
-            color = MaterialTheme.colorScheme.error,
-            style = MaterialTheme.typography.bodySmall
-        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+            ),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(
+                text = error,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
     }
 }

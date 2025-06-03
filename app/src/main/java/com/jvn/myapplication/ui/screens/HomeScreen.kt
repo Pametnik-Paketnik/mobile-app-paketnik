@@ -41,15 +41,13 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen() {
-    // Modern color palette
-    val primaryTeal = Color(0xFF008C9E)
-    val lightTeal = Color(0xFF4DB6AC)
-    val darkTeal = Color(0xFF00695C)
-    val accentBlue = Color(0xFF2196F3)
-    val softGray = Color(0xFFF8F9FA)
+    // Airbnb-style color palette
+    val airbnbRed = Color(0xFFFF5A5F)
+    val darkGray = Color(0xFF484848)
+    val lightGray = Color(0xFFF7F7F7)
     val cardWhite = Color(0xFFFFFFFF)
-    val textDark = Color(0xFF2E2E2E)
-    val textLight = Color(0xFF757575)
+    val textDark = Color(0xFF484848)
+    val textLight = Color(0xFF767676)
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -107,24 +105,18 @@ fun HomeScreen() {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(softGray)
+            .background(lightGray)
     ) {
-        // Beautiful gradient header with centered text
+        // Clean header with solid Airbnb red
         Box(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Background gradient - smaller height
+            // Solid background - no gradient
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(140.dp) // Reduced from 200dp to 140dp
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(primaryTeal, lightTeal, accentBlue),
-                            startY = 0f,
-                            endY = 400f // Adjusted for smaller height
-                        )
-                    )
+                    .height(140.dp)
+                    .background(airbnbRed)
             )
 
             // Centered header content with horizontal layout
@@ -134,7 +126,7 @@ fun HomeScreen() {
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(24.dp)) // Reduced spacing
+                Spacer(modifier = Modifier.height(24.dp))
                 
                 AnimatedVisibility(
                     visible = isContentVisible,
@@ -152,11 +144,11 @@ fun HomeScreen() {
                                 imageVector = Icons.Default.Lock,
                                 contentDescription = null,
                                 tint = Color.White,
-                                modifier = Modifier.size(32.dp) // Slightly smaller icon
+                                modifier = Modifier.size(32.dp)
                             )
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(
-                                "Paketnik",
+                                "Air-Box",
                                 style = MaterialTheme.typography.headlineLarge,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White,
@@ -206,7 +198,7 @@ fun HomeScreen() {
                             Icon(
                                 imageVector = Icons.Default.Face,
                                 contentDescription = null,
-                                tint = primaryTeal,
+                                tint = airbnbRed,
                                 modifier = Modifier.size(48.dp)
                             )
                             Spacer(modifier = Modifier.height(16.dp))
@@ -249,7 +241,7 @@ fun HomeScreen() {
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = primaryTeal),
+                        colors = ButtonDefaults.buttonColors(containerColor = airbnbRed),
                         shape = RoundedCornerShape(16.dp)
                     ) {
                         Icon(imageVector = Icons.Default.Close, contentDescription = null)
@@ -259,60 +251,43 @@ fun HomeScreen() {
                 }
             }
         } else {
-            // Main dashboard content - perfectly centered
-            Column(
-                modifier = Modifier.fillMaxSize(),
-                horizontalAlignment = Alignment.CenterHorizontally
+            // Main dashboard content - true centering between header bottom and bottom nav top
+            AnimatedVisibility(
+                visible = isContentVisible,
+                enter = scaleIn(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                ) + fadeIn(animationSpec = tween(1000))
             ) {
-                Spacer(modifier = Modifier.weight(1f)) // Push content to center
-                
-                // Main QR scan button with beautiful animation - centered
-                AnimatedVisibility(
-                    visible = isContentVisible,
-                    enter = scaleIn(
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                            stiffness = Spring.StiffnessLow
-                        )
-                    ) + fadeIn(animationSpec = tween(1000))
+                Column(
+                    modifier = Modifier.fillMaxSize()
                 ) {
+                    // Account for the spacer after header (32dp)
+                    Spacer(modifier = Modifier.height(32.dp))
+                    
+                    // Remaining space divided equally above and below button
+                    // Total available height minus header(140dp) + spacer(32dp) + bottom nav(100dp) = remaining space
+                    Spacer(modifier = Modifier.weight(1f))
+                    
+                    // Centered button - no shadow to avoid visual offset
                     Box(
-                        modifier = Modifier.size(220.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        // Outer glow effect
-                        Box(
-                            modifier = Modifier
-                                .size(220.dp)
-                                .background(
-                                    Brush.radialGradient(
-                                        colors = listOf(
-                                            primaryTeal.copy(alpha = 0.3f),
-                                            Color.Transparent
-                                        ),
-                                        radius = 300f
-                                    ),
-                                    CircleShape
-                                )
-                        )
-
-                        // Main scan button
+                        // Main scan button without shadow for precise centering
                         Card(
-                            modifier = Modifier
-                                .size(180.dp)
-                                .shadow(12.dp, CircleShape),
+                            modifier = Modifier.size(180.dp),
                             shape = CircleShape,
-                            colors = CardDefaults.cardColors(containerColor = cardWhite)
+                            colors = CardDefaults.cardColors(containerColor = airbnbRed),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp) // No shadow
                         ) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .background(
-                                        Brush.radialGradient(
-                                            colors = listOf(primaryTeal, darkTeal),
-                                            radius = 400f
-                                        )
-                                    )
                                     .clip(CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
@@ -351,10 +326,13 @@ fun HomeScreen() {
                             }
                         }
                     }
+                    
+                    // Equal space below button
+                    Spacer(modifier = Modifier.weight(1f))
+                    
+                    // Account for bottom nav height (100dp)
+                    Spacer(modifier = Modifier.height(100.dp))
                 }
-                
-                Spacer(modifier = Modifier.weight(1f)) // Push content to center
-                Spacer(modifier = Modifier.height(120.dp)) // Space for bigger bottom nav
             }
         }
     }
