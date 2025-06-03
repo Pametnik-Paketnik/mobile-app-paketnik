@@ -48,7 +48,7 @@ fun BottomNavigationBar(
         NavigationBar(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(80.dp)
+                .height(100.dp)
                 .background(Color.White, RoundedCornerShape(28.dp)),
             containerColor = Color.Transparent,
             tonalElevation = 0.dp,
@@ -99,14 +99,7 @@ fun BottomNavigationBar(
                             )
                         }
                     },
-                    label = {
-                        Text(
-                            text = item.title,
-                            fontSize = 12.sp,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = if (isSelected) primaryTeal else textLight
-                        )
-                    },
+                    label = null,
                     selected = isSelected,
                     onClick = {
                         if (currentRoute != item.route) {

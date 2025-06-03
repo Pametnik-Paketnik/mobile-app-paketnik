@@ -109,7 +109,7 @@ fun HomeScreen() {
             .fillMaxSize()
             .background(softGray)
     ) {
-        // Beautiful gradient header
+        // Beautiful gradient header with centered text
         Box(
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -127,97 +127,43 @@ fun HomeScreen() {
                     )
             )
 
-            // Header content
-            Column {
-                // Top section with app name and greeting
-                Column(
-                    modifier = Modifier.padding(16.dp)
+            // Centered header content
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(modifier = Modifier.height(32.dp))
+                
+                AnimatedVisibility(
+                    visible = isContentVisible,
+                    enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(animationSpec = tween(600))
                 ) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Lock,
                             contentDescription = null,
                             tint = Color.White,
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(48.dp)
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "Paketnik",
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                        if (username != null) {
                             Text(
-                                "Paketnik",
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                "Hello, $username! 👋",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color.White.copy(alpha = 0.9f),
+                                textAlign = TextAlign.Center
                             )
-                            if (username != null) {
-                                Text(
-                                    "Hello, $username! 👋",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = Color.White.copy(alpha = 0.9f)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Welcome section card
-                AnimatedVisibility(
-                    visible = isContentVisible,
-                    enter = slideInVertically(
-                        initialOffsetY = { it },
-                        animationSpec = tween(800)
-                    ) + fadeIn(animationSpec = tween(800))
-                ) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                            .shadow(8.dp, RoundedCornerShape(20.dp)),
-                        colors = CardDefaults.cardColors(containerColor = cardWhite),
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp)
-                        ) {
-                            Column {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(56.dp)
-                                            .background(
-                                                primaryTeal.copy(alpha = 0.1f),
-                                                CircleShape
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text(
-                                            text = if (userType == "HOST") "🏢" else "👤",
-                                            style = MaterialTheme.typography.headlineMedium
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.width(16.dp))
-                                    Column {
-                                        Text(
-                                            text = if (userType == "HOST") "Host Dashboard" else "Smart Access",
-                                            style = MaterialTheme.typography.titleLarge,
-                                            fontWeight = FontWeight.Bold,
-                                            color = textDark
-                                        )
-                                        Text(
-                                            text = if (userType == "HOST")
-                                                "Manage boxes & monitor access"
-                                            else
-                                                "Secure box access system",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = textLight
-                                        )
-                                    }
-                                }
-                            }
                         }
                     }
                 }
@@ -305,15 +251,14 @@ fun HomeScreen() {
                 }
             }
         } else {
-            // Main dashboard content
+            // Main dashboard content - perfectly centered
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-                    .verticalScroll(rememberScrollState()),
+                modifier = Modifier.fillMaxSize(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Main QR scan button with beautiful animation
+                Spacer(modifier = Modifier.weight(1f)) // Push content to center
+                
+                // Main QR scan button with beautiful animation - centered
                 AnimatedVisibility(
                     visible = isContentVisible,
                     enter = scaleIn(
@@ -387,7 +332,7 @@ fun HomeScreen() {
                                         )
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Text(
-                                            text = "SCAN\nQR CODE",
+                                            text = "OPEN\nTHE BOX",
                                             color = Color.White,
                                             textAlign = TextAlign.Center,
                                             style = MaterialTheme.typography.titleLarge,
@@ -399,66 +344,9 @@ fun HomeScreen() {
                         }
                     }
                 }
-
-                Spacer(modifier = Modifier.height(48.dp))
-
-                // Quick info section
-                AnimatedVisibility(
-                    visible = isContentVisible,
-                    enter = slideInVertically(
-                        initialOffsetY = { it },
-                        animationSpec = tween(1000, delayMillis = 200)
-                    ) + fadeIn(animationSpec = tween(1000, delayMillis = 200))
-                ) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(6.dp, RoundedCornerShape(20.dp)),
-                        colors = CardDefaults.cardColors(containerColor = cardWhite),
-                        shape = RoundedCornerShape(20.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(24.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(48.dp)
-                                        .background(
-                                            accentBlue.copy(alpha = 0.1f),
-                                            CircleShape
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Info,
-                                        contentDescription = null,
-                                        tint = accentBlue,
-                                        modifier = Modifier.size(24.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(16.dp))
-                                Column {
-                                    Text(
-                                        "How to Use",
-                                        style = MaterialTheme.typography.titleLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = textDark
-                                    )
-                                    Text(
-                                        "Tap the button to scan QR codes for secure box access",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = textLight
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp)) // Reduced spacing
+                
+                Spacer(modifier = Modifier.weight(1f)) // Push content to center
+                Spacer(modifier = Modifier.height(120.dp)) // Space for bigger bottom nav
             }
         }
     }
