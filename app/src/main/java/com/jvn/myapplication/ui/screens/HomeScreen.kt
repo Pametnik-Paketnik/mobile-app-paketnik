@@ -113,28 +113,28 @@ fun HomeScreen() {
         Box(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Background gradient
+            // Background gradient - smaller height
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(200.dp)
+                    .height(140.dp) // Reduced from 200dp to 140dp
                     .background(
                         Brush.verticalGradient(
                             colors = listOf(primaryTeal, lightTeal, accentBlue),
                             startY = 0f,
-                            endY = 600f
+                            endY = 400f // Adjusted for smaller height
                         )
                     )
             )
 
-            // Centered header content
+            // Centered header content with horizontal layout
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(32.dp))
+                Spacer(modifier = Modifier.height(24.dp)) // Reduced spacing
                 
                 AnimatedVisibility(
                     visible = isContentVisible,
@@ -143,21 +143,29 @@ fun HomeScreen() {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(48.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            "Paketnik",
-                            style = MaterialTheme.typography.headlineLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            textAlign = TextAlign.Center
-                        )
+                        // Horizontal layout: icon next to text
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Lock,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp) // Slightly smaller icon
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                "Paketnik",
+                                style = MaterialTheme.typography.headlineLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                        
                         if (username != null) {
+                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 "Hello, $username! 👋",
                                 style = MaterialTheme.typography.bodyLarge,

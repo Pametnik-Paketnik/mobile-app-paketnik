@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.jvn.myapplication.data.repository.AuthRepository
 
@@ -81,54 +82,68 @@ fun UserSettingsScreen(
 
             // Profile section
             Column(
-                modifier = Modifier.padding(16.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
                 
                 AnimatedVisibility(
                     visible = isContentVisible,
                     enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(animationSpec = tween(600))
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Profile Avatar
-                        Box(
-                            modifier = Modifier
-                                .size(80.dp)
-                                .background(
-                                    Color.White.copy(alpha = 0.2f),
-                                    CircleShape
-                                ),
-                            contentAlignment = Alignment.Center
+                        // Horizontal layout: avatar next to username
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
                         ) {
-                            Text(
-                                text = if (userType == "HOST") "🏢" else "👤",
-                                style = MaterialTheme.typography.headlineLarge
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.width(20.dp))
-                        
-                        Column {
-                            Text(
-                                text = username ?: "User",
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White
-                            )
-                            Text(
-                                text = if (userType == "HOST") "Host Account" else "Standard User",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = Color.White.copy(alpha = 0.9f)
-                            )
-                            if (userId != null) {
+                            // Profile Avatar (smaller)
+                            Box(
+                                modifier = Modifier
+                                    .size(48.dp) // Reduced from 80dp
+                                    .background(
+                                        Color.White.copy(alpha = 0.2f),
+                                        CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
                                 Text(
-                                    text = "ID: $userId",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color.White.copy(alpha = 0.7f)
+                                    text = if (userType == "HOST") "🏢" else "👤",
+                                    style = MaterialTheme.typography.headlineMedium
                                 )
                             }
+                            
+                            Spacer(modifier = Modifier.width(16.dp))
+                            
+                            Column {
+                                Text(
+                                    text = username ?: "User",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    textAlign = TextAlign.Start
+                                )
+                                Text(
+                                    text = if (userType == "HOST") "Host Account" else "Standard User",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.White.copy(alpha = 0.9f),
+                                    textAlign = TextAlign.Start
+                                )
+                            }
+                        }
+                        
+                        if (userId != null) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "ID: $userId",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.White.copy(alpha = 0.7f),
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
                 }
