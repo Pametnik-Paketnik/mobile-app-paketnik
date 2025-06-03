@@ -165,12 +165,24 @@ class AuthRepository(private val context: Context) {
         userId: String,
         userType: String? = null
     ) {
+        println("🔍 DEBUG - AuthRepository.saveAuthData(): Saving data...")
+        println("🔍 DEBUG - Token: ${token.take(20)}...")
+        println("🔍 DEBUG - Username: $username")
+        println("🔍 DEBUG - UserId: $userId")
+        println("🔍 DEBUG - UserType: $userType")
+        
         context.dataStore.edit { preferences ->
             preferences[TOKEN_KEY] = token
             preferences[USERNAME_KEY] = username
             preferences[USER_ID_KEY] = userId
             userType?.let { preferences[USER_TYPE_KEY] = it }
+            
+            println("🔍 DEBUG - AuthRepository.saveAuthData(): Saved ${preferences.asMap().size} entries to DataStore")
         }
+        
+        // Verify what was saved
+        val savedUserId = getUserId().first()
+        println("🔍 DEBUG - AuthRepository.saveAuthData(): Verification - retrieved user ID: '$savedUserId'")
     }
 
     private fun generateUserId(username: String): String {
@@ -186,7 +198,11 @@ class AuthRepository(private val context: Context) {
 
     fun getUserId(): Flow<String?> {
         return context.dataStore.data.map { preferences ->
-            preferences[USER_ID_KEY]
+            val userId = preferences[USER_ID_KEY]
+            println("🔍 DEBUG - AuthRepository.getUserId(): Retrieved user ID: '$userId'")
+            println("🔍 DEBUG - AuthRepository.getUserId(): DataStore contains ${preferences.asMap().size} entries")
+            println("🔍 DEBUG - AuthRepository.getUserId(): All keys: ${preferences.asMap().keys}")
+            userId
         }
     }
 

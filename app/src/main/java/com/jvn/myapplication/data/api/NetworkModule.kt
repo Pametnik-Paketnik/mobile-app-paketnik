@@ -39,4 +39,8 @@ object NetworkModule {
     val boxApi: BoxApiService by lazy {
         retrofit.create(BoxApiService::class.java)
     }
+
+    val reservationApi: ReservationApiService by lazy {
+        retrofit.create(ReservationApiService::class.java)
+    }
 }

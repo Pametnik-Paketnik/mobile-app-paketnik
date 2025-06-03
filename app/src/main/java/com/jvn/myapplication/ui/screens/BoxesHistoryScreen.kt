@@ -13,7 +13,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -22,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.jvn.myapplication.data.repository.AuthRepository
 import com.jvn.myapplication.ui.activity.RecentActivityScreen
 import com.jvn.myapplication.ui.unlock.UnlockHistoryScreen
+import com.jvn.myapplication.ui.reservations.ReservationsScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,7 +37,7 @@ fun BoxesHistoryScreen() {
     val context = LocalContext.current
     val authRepository = remember { AuthRepository(context) }
 
-    // State for navigation between different history views
+    // State for navigation between different views
     var selectedView by remember { mutableStateOf("overview") }
     var isContentVisible by remember { mutableStateOf(false) }
 
@@ -67,149 +67,157 @@ fun BoxesHistoryScreen() {
             }
             return
         }
+        "reservations" -> {
+            ReservationsScreen()
+            return
+        }
     }
 
-    // Main overview screen
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(lightGray)
-    ) {
-        // Clean header with solid color
-        Box(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // Solid background - no gradient
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(140.dp)
-                    .background(airbnbRed)
-            )
-
-            // Header content
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Spacer(modifier = Modifier.height(24.dp))
-                AnimatedVisibility(
-                    visible = isContentVisible,
-                    enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(animationSpec = tween(600))
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        // Horizontal layout: icon next to text
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Info,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(32.dp)
-                            )
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(
-                                "Boxes History",
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "Track your box access activity",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = Color.White.copy(alpha = 0.9f),
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Content area
+    // Main overview screen - different content based on user type
+    if (userType == "USER") {
+        // For regular users, show reservations directly
+        ReservationsScreen()
+    } else {
+        // For HOST users, show the existing overview with unlock history
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .background(lightGray)
         ) {
-            // Recent Activity Card
-            AnimatedVisibility(
-                visible = isContentVisible,
-                enter = slideInVertically(
-                    initialOffsetY = { it },
-                    animationSpec = tween(800, delayMillis = 100)
-                ) + fadeIn(animationSpec = tween(800, delayMillis = 100))
+            // Clean header with solid color
+            Box(
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Card(
+                // Solid background
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(6.dp, RoundedCornerShape(20.dp)),
-                    colors = CardDefaults.cardColors(containerColor = cardWhite),
-                    shape = RoundedCornerShape(20.dp),
-                    onClick = { selectedView = "recent_activity" }
+                        .height(140.dp)
+                        .background(airbnbRed)
+                )
+
+                // Header content
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(24.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Spacer(modifier = Modifier.height(24.dp))
+                    AnimatedVisibility(
+                        visible = isContentVisible,
+                        enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(animationSpec = tween(600))
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .background(
-                                    airbnbRed.copy(alpha = 0.1f),
-                                    RoundedCornerShape(16.dp)
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.DateRange,
-                                contentDescription = null,
-                                tint = airbnbRed,
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(20.dp))
                         Column(
-                            modifier = Modifier.weight(1f)
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
+                            // Horizontal layout: icon next to text
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    "Host Dashboard",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "Recent Activity",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = textDark
-                            )
-                            Text(
-                                "View your latest box interactions",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = textLight
+                                "Manage your boxes and monitor activity",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color.White.copy(alpha = 0.9f),
+                                textAlign = TextAlign.Center
                             )
                         }
-                        Icon(
-                            imageVector = Icons.Default.ArrowForward,
-                            contentDescription = null,
-                            tint = textLight,
-                            modifier = Modifier.size(24.dp)
-                        )
                     }
                 }
             }
 
-            // Unlock History Card (for HOST users)
-            if (userType == "HOST") {
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Content area for HOST users
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Recent Activity Card
+                AnimatedVisibility(
+                    visible = isContentVisible,
+                    enter = slideInVertically(
+                        initialOffsetY = { it },
+                        animationSpec = tween(800, delayMillis = 100)
+                    ) + fadeIn(animationSpec = tween(800, delayMillis = 100))
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(6.dp, RoundedCornerShape(20.dp)),
+                        colors = CardDefaults.cardColors(containerColor = cardWhite),
+                        shape = RoundedCornerShape(20.dp),
+                        onClick = { selectedView = "recent_activity" }
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .background(
+                                        airbnbRed.copy(alpha = 0.1f),
+                                        RoundedCornerShape(16.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.DateRange,
+                                    contentDescription = null,
+                                    tint = airbnbRed,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(20.dp))
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    "Recent Activity",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = textDark
+                                )
+                                Text(
+                                    "View your latest box interactions",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = textLight
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.Default.ArrowForward,
+                                contentDescription = null,
+                                tint = textLight,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Unlock History Card (for HOST users)
                 AnimatedVisibility(
                     visible = isContentVisible,
                     enter = slideInVertically(
@@ -282,9 +290,9 @@ fun BoxesHistoryScreen() {
                         }
                     }
                 }
-            }
 
-            Spacer(modifier = Modifier.height(24.dp)) // Reduced spacing for proper layout
+                Spacer(modifier = Modifier.height(24.dp))
+            }
         }
     }
 } 

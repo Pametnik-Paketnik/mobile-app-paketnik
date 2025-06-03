@@ -173,7 +173,7 @@ fun HomeScreen() {
         Spacer(modifier = Modifier.height(32.dp))
 
         if (isScanningActive) {
-            // QR Scanner UI
+            // QR Scanner UI - Full screen camera view
             AnimatedVisibility(
                 visible = true,
                 enter = scaleIn() + fadeIn()
@@ -184,46 +184,12 @@ fun HomeScreen() {
                         .padding(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .shadow(4.dp, RoundedCornerShape(16.dp)),
-                        colors = CardDefaults.cardColors(containerColor = cardWhite),
-                        shape = RoundedCornerShape(16.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Face,
-                                contentDescription = null,
-                                tint = airbnbRed,
-                                modifier = Modifier.size(48.dp)
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                "Scan QR Code",
-                                style = MaterialTheme.typography.headlineSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = textDark
-                            )
-                            Text(
-                                "Position QR code within the frame",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = textLight,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
+                    // Large camera view for better scanning
                     Box(
                         modifier = Modifier
-                            .size(280.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .shadow(8.dp, RoundedCornerShape(20.dp))
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .clip(RoundedCornerShape(24.dp))
                     ) {
                         QRCodeScanner(
                             onQrCodeScanned = { boxId ->
@@ -234,7 +200,7 @@ fun HomeScreen() {
                         )
                     }
 
-                    Spacer(modifier = Modifier.weight(1f))
+                    Spacer(modifier = Modifier.height(24.dp))
 
                     Button(
                         onClick = { isScanningActive = false },
