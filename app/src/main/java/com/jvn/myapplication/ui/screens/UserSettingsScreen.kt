@@ -24,7 +24,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jvn.myapplication.data.repository.AuthRepository
+import com.jvn.myapplication.data.repository.FaceAuthRepository
+import com.jvn.myapplication.ui.face.FaceAuthScreen
+import com.jvn.myapplication.ui.face.FaceAuthViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,26 +45,44 @@ fun UserSettingsScreen(
 
     val context = LocalContext.current
     val authRepository = remember { AuthRepository(context) }
+    val faceAuthRepository = remember { FaceAuthRepository(context) }
+
+    // ViewModels
+    val securitySettingsViewModel: SecuritySettingsViewModel = viewModel {
+        SecuritySettingsViewModel(authRepository, faceAuthRepository)
+    }
 
     // Animation state
     var isContentVisible by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
-    var showSecuritySettings by remember { mutableStateOf(false) }
+    var showFaceVerification by remember { mutableStateOf(false) }
 
     // User data
     val userId by authRepository.getUserId().collectAsState(initial = null)
     val username by authRepository.getUsername().collectAsState(initial = null)
     val userType by authRepository.getUserType().collectAsState(initial = null)
+    
+    // Face verification state
+    val faceVerificationEnabled by securitySettingsViewModel.isFace2FAEnabled.collectAsState(initial = false)
+    val securityUiState by securitySettingsViewModel.uiState.collectAsState()
 
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(200)
         isContentVisible = true
     }
 
-    // Handle security settings screen
-    if (showSecuritySettings) {
-        SecuritySettingsScreen(
-            onBack = { showSecuritySettings = false }
+    // Handle face verification screen
+    if (showFaceVerification && userId != null) {
+        val faceAuthViewModel: FaceAuthViewModel = viewModel {
+            FaceAuthViewModel(faceAuthRepository, userId!!)
+        }
+        FaceAuthScreen(
+            faceAuthViewModel = faceAuthViewModel,
+            onRegistrationSuccess = {
+                showFaceVerification = false
+                // Enable 2FA after successful setup
+                securitySettingsViewModel.enableFace2FA()
+            }
         )
         return
     }
@@ -180,10 +202,10 @@ fun UserSettingsScreen(
                             onClick = { /* TODO: Navigate to profile edit */ }
                         ),
                         SettingsItem(
-                            icon = Icons.Default.Lock,
-                            title = "Security & Privacy",
-                            subtitle = "Manage your security settings",
-                            onClick = { showSecuritySettings = true }
+                            icon = Icons.Default.Edit,
+                            title = "Change Username",
+                            subtitle = "Update your username",
+                            onClick = { /* TODO: Navigate to username change */ }
                         ),
                         SettingsItem(
                             icon = Icons.Default.Build,
@@ -195,79 +217,36 @@ fun UserSettingsScreen(
                 )
             }
 
-            // App settings section
+            // Security & Privacy section
             AnimatedVisibility(
                 visible = isContentVisible,
                 enter = slideInVertically(
                     initialOffsetY = { it },
-                    animationSpec = tween(800, delayMillis = 200)
-                ) + fadeIn(animationSpec = tween(800, delayMillis = 200))
+                    animationSpec = tween(800, delayMillis = 150)
+                ) + fadeIn(animationSpec = tween(800, delayMillis = 150))
             ) {
-                SettingsSection(
-                    title = "App Settings",
-                    items = listOf(
-                        SettingsItem(
-                            icon = Icons.Default.Notifications,
-                            title = "Notifications",
-                            subtitle = "Configure push notifications",
-                            onClick = { /* TODO: Navigate to notification settings */ }
-                        ),
-                        SettingsItem(
-                            icon = Icons.Default.Face,
-                            title = "Camera Settings",
-                            subtitle = "QR scanner preferences",
-                            onClick = { /* TODO: Navigate to camera settings */ }
-                        ),
-                        SettingsItem(
-                            icon = Icons.Default.AccountCircle,
-                            title = "Appearance",
-                            subtitle = "Theme and display options",
-                            onClick = { /* TODO: Navigate to appearance settings */ }
-                        )
-                    )
+                SecurityPrivacySection(
+                    faceVerificationEnabled = faceVerificationEnabled,
+                    isDeleting = securityUiState.isDeleting,
+                    onToggleFaceVerification = { enabled ->
+                        if (enabled) {
+                            showFaceVerification = true
+                        } else {
+                            securitySettingsViewModel.disableFace2FA()
+                        }
+                    }
                 )
             }
 
-            // Support section
-            AnimatedVisibility(
-                visible = isContentVisible,
-                enter = slideInVertically(
-                    initialOffsetY = { it },
-                    animationSpec = tween(800, delayMillis = 300)
-                ) + fadeIn(animationSpec = tween(800, delayMillis = 300))
-            ) {
-                SettingsSection(
-                    title = "Support",
-                    items = listOf(
-                        SettingsItem(
-                            icon = Icons.Default.Search,
-                            title = "Help & Support",
-                            subtitle = "Get help and contact support",
-                            onClick = { /* TODO: Navigate to help */ }
-                        ),
-                        SettingsItem(
-                            icon = Icons.Default.Info,
-                            title = "About",
-                            subtitle = "App version and information",
-                            onClick = { /* TODO: Show about dialog */ }
-                        ),
-                        SettingsItem(
-                            icon = Icons.Default.Email,
-                            title = "Send Feedback",
-                            subtitle = "Help us improve the app",
-                            onClick = { /* TODO: Open feedback form */ }
-                        )
-                    )
-                )
-            }
+
 
             // Logout section
             AnimatedVisibility(
                 visible = isContentVisible,
                 enter = slideInVertically(
                     initialOffsetY = { it },
-                    animationSpec = tween(800, delayMillis = 400)
-                ) + fadeIn(animationSpec = tween(800, delayMillis = 400))
+                    animationSpec = tween(800, delayMillis = 200)
+                ) + fadeIn(animationSpec = tween(800, delayMillis = 200))
             ) {
                 Card(
                     modifier = Modifier
@@ -456,6 +435,100 @@ private fun SettingsItemRow(item: SettingsItem) {
             tint = textLight,
             modifier = Modifier.size(20.dp)
         )
+    }
+}
+
+@Composable
+private fun SecurityPrivacySection(
+    faceVerificationEnabled: Boolean,
+    isDeleting: Boolean,
+    onToggleFaceVerification: (Boolean) -> Unit
+) {
+    val airbnbRed = Color(0xFFFF5A5F)
+    val cardWhite = Color(0xFFFFFFFF)
+    val textDark = Color(0xFF484848)
+    val textLight = Color(0xFF767676)
+    val successGreen = Color(0xFF4CAF50)
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(6.dp, RoundedCornerShape(20.dp)),
+        colors = CardDefaults.cardColors(containerColor = cardWhite),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Security & Privacy",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = textDark,
+                modifier = Modifier.padding(8.dp)
+            )
+
+            // Face Verification Toggle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                airbnbRed.copy(alpha = 0.1f),
+                                RoundedCornerShape(10.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Face,
+                            contentDescription = null,
+                            tint = airbnbRed,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = "Face Verification (2FA)",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = textDark
+                        )
+                        Text(
+                            text = "Add an extra layer of security",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = textLight
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Switch(
+                    checked = faceVerificationEnabled,
+                    onCheckedChange = onToggleFaceVerification,
+                    enabled = !isDeleting,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = successGreen,
+                        uncheckedThumbColor = Color.White,
+                        uncheckedTrackColor = Color.Gray.copy(alpha = 0.4f)
+                    )
+                )
+            }
+        }
     }
 }
 
