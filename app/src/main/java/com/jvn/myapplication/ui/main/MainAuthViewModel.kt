@@ -28,8 +28,10 @@ class MainAuthViewModel(
                 if (token.isNullOrEmpty()) {
                     _authState.value = AuthState.UNAUTHENTICATED
                 } else {
-                    // Check if 2FA is enabled and requires face verification
-                    checkFaceVerificationRequirement()
+                    // Only check face verification on initial auth or when state is not already authenticated
+                    if (_authState.value != AuthState.AUTHENTICATED) {
+                        checkFaceVerificationRequirement()
+                    }
                 }
                 println("DEBUG: AuthState set to: ${_authState.value}")
             }

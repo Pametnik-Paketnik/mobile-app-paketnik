@@ -1,11 +1,16 @@
 package com.jvn.myapplication.ui.face
 
 import android.Manifest
-import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.scaleIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.core.content.FileProvider
+import java.io.File
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +29,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jvn.myapplication.data.repository.FaceAuthRepository
 import kotlinx.coroutines.delay
+import androidx.compose.ui.draw.clip
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,22 +59,14 @@ fun LoginFaceVerificationScreen(
         faceAuthViewModel.resetState()
     }
     
-    var capturedImageUri by remember { mutableStateOf<Uri?>(null) }
     var showCamera by remember { mutableStateOf(false) }
+    var shouldCapture by remember { mutableStateOf(false) }
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
             showCamera = true
-        }
-    }
-
-    val cameraLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.TakePicture()
-    ) { success ->
-        if (success && capturedImageUri != null) {
-            faceAuthViewModel.verifyFace(capturedImageUri!!)
         }
     }
 
@@ -86,38 +84,179 @@ fun LoginFaceVerificationScreen(
             .background(lightGray),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Top Bar
-        TopAppBar(
-            title = { Text("Face Verification Required") },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = airbnbRed,
-                titleContentColor = Color.White
-            ),
-            actions = {
+        // Clean header with solid Airbnb red
+        Box(
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            // Solid background
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
+                    .background(airbnbRed)
+            )
+
+            // Centered header content
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(modifier = Modifier.height(24.dp))
+                
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Header with icon and text
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Face,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            "Face Verification",
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Identity verification required",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.White.copy(alpha = 0.9f),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+            
+            // Logout button
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
                 TextButton(
                     onClick = onLogout
                 ) {
                     Text("Logout", color = Color.White)
                 }
             }
-        )
+        }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            when {
-                uiState.isVerifying -> {
-                    // Verifying state
-                    Card(
+        Spacer(modifier = Modifier.height(32.dp))
+
+        if (showCamera) {
+            // Face Camera UI - Full screen camera view like QR scanner
+            AnimatedVisibility(
+                visible = true,
+                enter = scaleIn() + fadeIn()
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Large camera view for face capture
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .clip(RoundedCornerShape(24.dp))
+                    ) {
+                        FaceCamera(
+                            onPhotoCaptured = { photoFile ->
+                                // Convert File to Uri and verify
+                                val uri = FileProvider.getUriForFile(
+                                    context,
+                                    "${context.packageName}.provider",
+                                    photoFile
+                                )
+                                faceAuthViewModel.verifyFace(uri)
+                                showCamera = false
+                            },
+                            onError = { errorMessage ->
+                                faceAuthViewModel.setErrorMessage(errorMessage)
+                                showCamera = false
+                            },
+                            shouldCapture = shouldCapture,
+                            onCaptureHandled = { shouldCapture = false },
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Capture button
+                        Button(
+                            onClick = { shouldCapture = true },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = airbnbRed),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Face, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Capture Photo", style = MaterialTheme.typography.titleMedium)
+                        }
+
+                        // Cancel button
+                        Button(
+                            onClick = { 
+                                showCamera = false
+                                faceAuthViewModel.resetState()
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color.Gray),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Close, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Cancel", style = MaterialTheme.typography.titleMedium)
+                        }
+                    }
+                }
+            }
+        } else {
+            when {
+            uiState.isVerifying -> {
+                // Verifying state - QR scanner style layout
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Large verification view area
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .background(
+                                color = Color.White,
+                                shape = RoundedCornerShape(24.dp)
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
                         Column(
-                            modifier = Modifier.padding(24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             CircularProgressIndicator(
@@ -143,20 +282,40 @@ fun LoginFaceVerificationScreen(
                             )
                         }
                     }
-                }
 
-                uiState.isVerificationComplete -> {
-                    // Verification result
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (uiState.isAuthenticated) Color(0xFFE8F5E8) else Color(0xFFFFEBEE)
-                        )
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text(
+                        text = "Please wait while we verify your identity...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        color = textLight
+                    )
+                }
+            }
+
+            uiState.isVerificationComplete -> {
+                // Verification result - QR scanner style layout
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Large result view area
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .background(
+                                color = if (uiState.isAuthenticated) Color(0xFFE8F5E8) else Color(0xFFFFEBEE),
+                                shape = RoundedCornerShape(24.dp)
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
                         Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(24.dp)
                         ) {
                             Icon(
                                 imageVector = if (uiState.isAuthenticated) Icons.Default.CheckCircle else Icons.Default.Warning,
@@ -185,41 +344,60 @@ fun LoginFaceVerificationScreen(
                                 style = MaterialTheme.typography.bodyLarge,
                                 textAlign = TextAlign.Center
                             )
+                        }
+                    }
 
-                            if (!uiState.isAuthenticated) {
-                                Spacer(modifier = Modifier.height(24.dp))
-                                
-                                                                    Button(
-                                        onClick = {
-                                            // Reset state and try again
-                                            faceAuthViewModel.clearMessages()
-                                            faceAuthViewModel.resetState()
-                                            capturedImageUri = null
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        colors = ButtonDefaults.buttonColors(containerColor = airbnbRed)
-                                    ) {
-                                        Text("Try Again")
-                                    }
-                            }
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    if (!uiState.isAuthenticated) {
+                        Button(
+                            onClick = {
+                                // Reset state and try again
+                                faceAuthViewModel.clearMessages()
+                                faceAuthViewModel.resetState()
+                                showCamera = false
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = airbnbRed),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Icon(imageVector = Icons.Default.Refresh, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Try Again", style = MaterialTheme.typography.titleMedium)
                         }
                     }
                 }
+            }
 
-                else -> {
-                    // Initial state - show scan button
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            else -> {
+                // Initial state - QR scanner style layout with camera capture area
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Large camera capture area like QR scanner
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .background(
+                                color = Color.White,
+                                shape = RoundedCornerShape(24.dp)
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
                         Column(
-                            modifier = Modifier.padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            modifier = Modifier.padding(24.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Face,
                                 contentDescription = null,
-                                modifier = Modifier.size(64.dp),
+                                modifier = Modifier.size(80.dp),
                                 tint = airbnbRed
                             )
 
@@ -236,80 +414,75 @@ fun LoginFaceVerificationScreen(
                             Spacer(modifier = Modifier.height(16.dp))
 
                             Text(
-                                text = "You have Face Verification (2FA) enabled. Please scan your face to continue.",
+                                text = "You have Face Verification (2FA) enabled.\nTap below to capture your photo and continue.",
                                 style = MaterialTheme.typography.bodyLarge,
-                                textAlign = TextAlign.Center
+                                textAlign = TextAlign.Center,
+                                color = textDark
                             )
-
-                            Spacer(modifier = Modifier.height(24.dp))
-
-                            Button(
-                                onClick = {
-                                    if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-                                        == PackageManager.PERMISSION_GRANTED) {
-                                        // Create image URI and launch camera
-                                        val uri = context.contentResolver.insert(
-                                            android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                                            ContentValues().apply {
-                                                put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "face_login_${System.currentTimeMillis()}.jpg")
-                                                put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
-                                            }
-                                        )
-                                        capturedImageUri = uri
-                                        uri?.let { cameraLauncher.launch(it) }
-                                    } else {
-                                        cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                                    }
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(containerColor = airbnbRed)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Face,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Scan Face to Continue")
-                            }
-
-
                         }
                     }
-                }
-            }
 
-            // Error handling
-            uiState.errorMessage?.let { error ->
-                LaunchedEffect(error) {
-                    delay(3000)
-                    faceAuthViewModel.clearMessages()
-                }
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Button(
+                        onClick = {
+                            if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+                                == PackageManager.PERMISSION_GRANTED) {
+                                showCamera = true
+                            } else {
+                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = airbnbRed),
+                        shape = RoundedCornerShape(16.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = Color(0xFFD32F2F)
+                            imageVector = Icons.Default.Face,
+                            contentDescription = null
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = error,
-                            color = Color(0xFFD32F2F),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Text("Capture Photo to Continue", style = MaterialTheme.typography.titleMedium)
                     }
                 }
             }
         }
+        }
+
+        // Error handling
+        uiState.errorMessage?.let { error ->
+            LaunchedEffect(error) {
+                delay(3000)
+                faceAuthViewModel.clearMessages()
+            }
+            
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFD32F2F)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = error,
+                        color = Color(0xFFD32F2F),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
     }
-} 
+}

@@ -76,10 +76,6 @@ fun SecuritySettingsScreen(
                 showFaceVerification = false
                 // Enable 2FA after successful setup
                 securitySettingsViewModel.enableFace2FA()
-            },
-            onSkip = {
-                showFaceVerification = false
-                // Keep current state if user skips
             }
         )
         return

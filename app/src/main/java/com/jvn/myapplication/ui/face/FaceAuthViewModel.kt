@@ -87,7 +87,7 @@ class FaceAuthViewModel(
             faceAuthRepository.verifyFace(imageUri)
                 .onSuccess { verifyResponse ->
                     // Check if probability > 0.6 for successful verification
-                    val isSuccessful = verifyResponse.probability > 0.6f
+                    val isSuccessful = verifyResponse.probability > 0.5f
                     _uiState.value = _uiState.value.copy(
                         isVerifying = false,
                         isVerificationComplete = true,
@@ -141,6 +141,12 @@ class FaceAuthViewModel(
         _uiState.value = _uiState.value.copy(
             errorMessage = null,
             successMessage = null
+        )
+    }
+
+    fun setErrorMessage(message: String) {
+        _uiState.value = _uiState.value.copy(
+            errorMessage = message
         )
     }
 

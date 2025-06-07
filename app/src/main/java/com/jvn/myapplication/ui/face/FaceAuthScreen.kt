@@ -30,8 +30,7 @@ import kotlinx.coroutines.delay
 @Composable
 fun FaceAuthScreen(
     faceAuthViewModel: FaceAuthViewModel,
-    onRegistrationSuccess: () -> Unit,
-    onSkip: () -> Unit = {}
+    onRegistrationSuccess: () -> Unit
 ) {
     val uiState by faceAuthViewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -83,14 +82,7 @@ fun FaceAuthScreen(
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = airbnbRed,
                 titleContentColor = Color.White
-            ),
-            actions = {
-                TextButton(
-                    onClick = onSkip
-                ) {
-                    Text("Skip", color = Color.White)
-                }
-            }
+            )
         )
 
         when {
