@@ -86,16 +86,18 @@ class FaceAuthViewModel(
 
             faceAuthRepository.verifyFace(imageUri)
                 .onSuccess { verifyResponse ->
+                    // Check if probability > 0.6 for successful verification
+                    val isSuccessful = verifyResponse.probability > 0.6f
                     _uiState.value = _uiState.value.copy(
                         isVerifying = false,
                         isVerificationComplete = true,
-                        isAuthenticated = verifyResponse.authenticated,
+                        isAuthenticated = isSuccessful,
                         verificationProbability = verifyResponse.probability,
-                        successMessage = if (verifyResponse.authenticated) 
+                        successMessage = if (isSuccessful) 
                             "Identity verified! (${(verifyResponse.probability * 100).toInt()}% confidence)"
                         else 
                             "Identity not verified (${(verifyResponse.probability * 100).toInt()}% confidence)",
-                        currentStep = if (verifyResponse.authenticated) "Verification successful!" else "Verification failed"
+                        currentStep = if (isSuccessful) "Verification successful!" else "Verification failed"
                     )
                 }
                 .onFailure { exception ->

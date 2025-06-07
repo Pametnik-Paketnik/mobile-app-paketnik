@@ -1,6 +1,7 @@
 package com.jvn.myapplication.ui.face
 
 import android.Manifest
+import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -62,11 +63,7 @@ fun FaceAuthScreen(
         }
     }
 
-    LaunchedEffect(uiState.isRegistrationComplete) {
-        if (uiState.isRegistrationComplete) {
-            onRegistrationSuccess()
-        }
-    }
+    // Don't automatically go back - let user complete the full flow
 
     Column(
         modifier = Modifier
@@ -111,6 +108,33 @@ fun FaceAuthScreen(
                     currentStep = uiState.currentStep,
                     isTrainingComplete = uiState.isTrainingComplete,
                     trainingStatus = uiState.trainingStatus
+                )
+            }
+
+            uiState.isRegistrationComplete && !uiState.isTrainingComplete -> {
+                TrainingStatusContent(
+                    teal = teal,
+                    faceAuthViewModel = faceAuthViewModel,
+                    trainingStatus = uiState.trainingStatus,
+                    statusMessage = uiState.statusMessage
+                )
+            }
+
+            uiState.isTrainingComplete && !uiState.isVerificationComplete -> {
+                FaceVerificationTestContent(
+                    teal = teal,
+                    faceAuthViewModel = faceAuthViewModel,
+                    isVerifying = uiState.isVerifying,
+                    currentStep = uiState.currentStep
+                )
+            }
+
+            uiState.isVerificationComplete -> {
+                VerificationResultContent(
+                    teal = teal,
+                    isAuthenticated = uiState.isAuthenticated,
+                    probability = uiState.verificationProbability,
+                    onComplete = onRegistrationSuccess
                 )
             }
 
@@ -454,6 +478,273 @@ private fun ProcessingContent(
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun TrainingStatusContent(
+    teal: Color,
+    faceAuthViewModel: FaceAuthViewModel,
+    trainingStatus: String,
+    statusMessage: String
+) {
+    // Auto-check training status every 3 seconds
+    LaunchedEffect(Unit) {
+        while (true) {
+            faceAuthViewModel.checkTrainingStatus()
+            delay(3000)
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(64.dp),
+                    color = teal
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = "Training Your Face Model",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = teal,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Please wait while we process your video frames and train the face recognition model. This may take a few minutes.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Status: $trainingStatus",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                if (statusMessage.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = statusMessage,
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FaceVerificationTestContent(
+    teal: Color,
+    faceAuthViewModel: FaceAuthViewModel,
+    isVerifying: Boolean,
+    currentStep: String
+) {
+    var capturedImageUri by remember { mutableStateOf<Uri?>(null) }
+    val context = LocalContext.current
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { success ->
+        if (success && capturedImageUri != null) {
+            faceAuthViewModel.verifyFace(capturedImageUri!!)
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                if (isVerifying) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(64.dp),
+                        color = teal
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text(
+                        text = "Verifying Your Face",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = teal
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = currentStep,
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = Color(0xFF4CAF50)
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Text(
+                        text = "Training Complete!",
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF4CAF50)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "Your face model is ready. Let's test it with a verification scan.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Button(
+                        onClick = {
+                            val uri = context.contentResolver.insert(
+                                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                                ContentValues().apply {
+                                    put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "face_verify_${System.currentTimeMillis()}.jpg")
+                                    put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                                }
+                            )
+                            capturedImageUri = uri
+                            uri?.let { cameraLauncher.launch(it) }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = teal)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Face,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Scan Face to Verify")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VerificationResultContent(
+    teal: Color,
+    isAuthenticated: Boolean,
+    probability: Float,
+    onComplete: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isAuthenticated) Color(0xFFE8F5E8) else Color(0xFFFFEBEE)
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = if (isAuthenticated) Icons.Default.CheckCircle else Icons.Default.Warning,
+                    contentDescription = null,
+                    modifier = Modifier.size(64.dp),
+                    tint = if (isAuthenticated) Color(0xFF4CAF50) else Color(0xFFD32F2F)
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = if (isAuthenticated) "Face Verification Successful!" else "Face Verification Failed",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = if (isAuthenticated) Color(0xFF4CAF50) else Color(0xFFD32F2F),
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = if (isAuthenticated) 
+                        "Identity verified with ${(probability * 100).toInt()}% confidence. Face authentication is now enabled for your account."
+                    else 
+                        "Identity could not be verified (${(probability * 100).toInt()}% confidence). You may need to re-register your face.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center
+                )
+
+                if (isAuthenticated) {
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "From now on, you'll need to verify your face when logging in if 2FA is enabled.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = onComplete,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if (isAuthenticated) Color(0xFF4CAF50) else teal
+                    )
+                ) {
+                    Text(if (isAuthenticated) "Complete Setup" else "Try Again")
+                }
+            }
         }
     }
 } 
