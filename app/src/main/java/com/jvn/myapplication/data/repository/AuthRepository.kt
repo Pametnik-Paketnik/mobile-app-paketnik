@@ -1,6 +1,7 @@
 package com.jvn.myapplication.data.repository
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.gson.Gson
@@ -23,6 +24,7 @@ class AuthRepository(private val context: Context) {
         private val USERNAME_KEY = stringPreferencesKey("username")
         private val USER_ID_KEY = stringPreferencesKey("user_id")
         private val USER_TYPE_KEY = stringPreferencesKey("user_type")
+        private val FACE_2FA_ENABLED_KEY = booleanPreferencesKey("face_2fa_enabled")
     }
 
     suspend fun login(username: String, password: String): Result<String> {
@@ -215,6 +217,19 @@ class AuthRepository(private val context: Context) {
     fun getUserType(): Flow<String?> {
         return context.dataStore.data.map { preferences ->
             preferences[USER_TYPE_KEY]
+        }
+    }
+
+    // Face 2FA state management
+    suspend fun setFace2FAEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[FACE_2FA_ENABLED_KEY] = enabled
+        }
+    }
+
+    fun isFace2FAEnabled(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[FACE_2FA_ENABLED_KEY] ?: false
         }
     }
 }

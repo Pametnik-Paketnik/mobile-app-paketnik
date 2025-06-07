@@ -15,11 +15,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jvn.myapplication.data.repository.AuthRepository
+import com.jvn.myapplication.data.repository.FaceAuthRepository
 import com.jvn.myapplication.ui.auth.AuthScreen
 import com.jvn.myapplication.ui.auth.AuthViewModel
 import com.jvn.myapplication.ui.main.AuthState
 import com.jvn.myapplication.ui.main.MainAuthViewModel
 import com.jvn.myapplication.ui.navigation.MainNavigation
+import com.jvn.myapplication.ui.face.LoginFaceVerificationScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -36,8 +38,9 @@ class MainActivity : ComponentActivity() {
 fun Direct4meApp() {
     val context = LocalContext.current
     val authRepository = remember { AuthRepository(context) }
+    val faceAuthRepository = remember { FaceAuthRepository(context) }
     val authViewModel: AuthViewModel = viewModel { AuthViewModel(authRepository) }
-    val mainAuthViewModel: MainAuthViewModel = viewModel { MainAuthViewModel(authRepository) }
+    val mainAuthViewModel: MainAuthViewModel = viewModel { MainAuthViewModel(authRepository, faceAuthRepository) }
 
     val authState by mainAuthViewModel.authState.collectAsState()
 
@@ -59,6 +62,19 @@ fun Direct4meApp() {
                 authViewModel = authViewModel,
                 onAuthSuccess = {
                     // This will be handled automatically by token changes
+                }
+            )
+        }
+        AuthState.REQUIRES_FACE_VERIFICATION -> {
+            // Show face verification screen for login
+            LoginFaceVerificationScreen(
+                faceAuthRepository = faceAuthRepository,
+                onVerificationSuccess = {
+                    mainAuthViewModel.completeFaceVerification()
+                },
+                onLogout = { 
+                    // User chooses to logout instead of verifying
+                    mainAuthViewModel.logout()
                 }
             )
         }

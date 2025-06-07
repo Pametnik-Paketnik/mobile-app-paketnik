@@ -24,6 +24,7 @@ import com.jvn.myapplication.data.repository.AuthRepository
 import com.jvn.myapplication.data.repository.FaceAuthRepository
 import com.jvn.myapplication.ui.face.FaceAuthScreen
 import com.jvn.myapplication.ui.face.FaceAuthViewModel
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,10 +44,18 @@ fun SecuritySettingsScreen(
     val authRepository = remember { AuthRepository(context) }
     val faceAuthRepository = remember { FaceAuthRepository(context) }
 
+    // ViewModels
+    val securitySettingsViewModel: SecuritySettingsViewModel = viewModel {
+        SecuritySettingsViewModel(authRepository, faceAuthRepository)
+    }
+
     // State variables
     var isContentVisible by remember { mutableStateOf(false) }
     var showFaceVerification by remember { mutableStateOf(false) }
-    var faceVerificationEnabled by remember { mutableStateOf(false) }
+    
+    // Load state from ViewModels
+    val faceVerificationEnabled by securitySettingsViewModel.isFace2FAEnabled.collectAsState(initial = false)
+    val securityUiState by securitySettingsViewModel.uiState.collectAsState()
 
     // User data
     val userId by authRepository.getUserId().collectAsState(initial = null)
@@ -65,12 +74,12 @@ fun SecuritySettingsScreen(
             faceAuthViewModel = faceAuthViewModel,
             onRegistrationSuccess = {
                 showFaceVerification = false
-                // Keep the toggle enabled after successful verification
+                // Enable 2FA after successful setup
+                securitySettingsViewModel.enableFace2FA()
             },
             onSkip = {
                 showFaceVerification = false
-                // Disable toggle if user skips
-                faceVerificationEnabled = false
+                // Keep current state if user skips
             }
         )
         return
@@ -179,12 +188,12 @@ fun SecuritySettingsScreen(
                                     if (enabled) {
                                         // Show face verification when enabling
                                         showFaceVerification = true
-                                        faceVerificationEnabled = true
                                     } else {
-                                        // Disable without showing verification
-                                        faceVerificationEnabled = false
+                                        // Delete face data when disabling
+                                        securitySettingsViewModel.disableFace2FA()
                                     }
                                 },
+                                enabled = !securityUiState.isDeleting, // Disable while deleting
                                 colors = SwitchDefaults.colors(
                                     checkedThumbColor = Color.White,
                                     checkedTrackColor = successGreen,
@@ -194,25 +203,73 @@ fun SecuritySettingsScreen(
                             )
                         }
 
-                        if (faceVerificationEnabled) {
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.CheckCircle,
-                                    contentDescription = null,
-                                    tint = successGreen,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "Face Verification is active",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = successGreen,
-                                    fontWeight = FontWeight.Medium
-                                )
+                        // Status display
+                        Spacer(modifier = Modifier.height(12.dp))
+                        when {
+                            securityUiState.isDeleting -> {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                        color = airbnbRed
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Deleting face data...",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = textLight,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
                             }
+                            faceVerificationEnabled -> {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CheckCircle,
+                                        contentDescription = null,
+                                        tint = successGreen,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Face Verification is active",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = successGreen,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
+
+                        // Error/Success messages
+                        securityUiState.errorMessage?.let { error ->
+                            LaunchedEffect(error) {
+                                delay(3000)
+                                securitySettingsViewModel.clearMessages()
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = error,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color.Red
+                            )
+                        }
+
+                        securityUiState.successMessage?.let { success ->
+                            LaunchedEffect(success) {
+                                delay(3000)
+                                securitySettingsViewModel.clearMessages()
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = success,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = successGreen
+                            )
                         }
                     }
                 }
