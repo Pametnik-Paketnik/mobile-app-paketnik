@@ -2,7 +2,9 @@ package com.jvn.myapplication.ui.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,10 +39,12 @@ fun AuthScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(lightGray)
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        Spacer(modifier = Modifier.height(32.dp)) // Top padding to center content when possible
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -98,5 +102,7 @@ fun AuthScreen(
                 }
             }
         }
+        
+        Spacer(modifier = Modifier.height(32.dp)) // Bottom padding to ensure content is accessible
     }
 }

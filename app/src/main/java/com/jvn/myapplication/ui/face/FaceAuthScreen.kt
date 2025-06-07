@@ -35,7 +35,13 @@ fun FaceAuthScreen(
 ) {
     val uiState by faceAuthViewModel.uiState.collectAsState()
     val context = LocalContext.current
-    val teal = Color(0xFF008C9E)
+    
+    // AirBnb-style color palette
+    val airbnbRed = Color(0xFFFF5A5F)
+    val lightGray = Color(0xFFF7F7F7)
+    val cardWhite = Color(0xFFFFFFFF)
+    val textDark = Color(0xFF484848)
+    val textLight = Color(0xFF767676)
 
     var showInstructions by remember { mutableStateOf(true) }
     var isRecording by remember { mutableStateOf(false) }
@@ -68,14 +74,14 @@ fun FaceAuthScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5)),
+            .background(lightGray),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Top Bar
         TopAppBar(
             title = { Text("Face Authentication Setup") },
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = teal,
+                containerColor = airbnbRed,
                 titleContentColor = Color.White
             ),
             actions = {
@@ -90,7 +96,7 @@ fun FaceAuthScreen(
         when {
             showInstructions -> {
                 InstructionsContent(
-                    teal = teal,
+                    airbnbRed = airbnbRed,
                     onStartRecording = {
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
                             == PackageManager.PERMISSION_GRANTED) {
@@ -104,7 +110,7 @@ fun FaceAuthScreen(
 
             uiState.isProcessing -> {
                 ProcessingContent(
-                    teal = teal,
+                    airbnbRed = airbnbRed,
                     currentStep = uiState.currentStep,
                     isTrainingComplete = uiState.isTrainingComplete,
                     trainingStatus = uiState.trainingStatus
@@ -113,7 +119,7 @@ fun FaceAuthScreen(
 
             uiState.isRegistrationComplete && !uiState.isTrainingComplete -> {
                 TrainingStatusContent(
-                    teal = teal,
+                    airbnbRed = airbnbRed,
                     faceAuthViewModel = faceAuthViewModel,
                     trainingStatus = uiState.trainingStatus,
                     statusMessage = uiState.statusMessage
@@ -122,7 +128,7 @@ fun FaceAuthScreen(
 
             uiState.isTrainingComplete && !uiState.isVerificationComplete -> {
                 FaceVerificationTestContent(
-                    teal = teal,
+                    airbnbRed = airbnbRed,
                     faceAuthViewModel = faceAuthViewModel,
                     isVerifying = uiState.isVerifying,
                     currentStep = uiState.currentStep
@@ -131,7 +137,7 @@ fun FaceAuthScreen(
 
             uiState.isVerificationComplete -> {
                 VerificationResultContent(
-                    teal = teal,
+                    airbnbRed = airbnbRed,
                     isAuthenticated = uiState.isAuthenticated,
                     probability = uiState.verificationProbability,
                     onComplete = onRegistrationSuccess
@@ -140,7 +146,7 @@ fun FaceAuthScreen(
 
             recordedVideoUri != null -> {
                 ReviewContent(
-                    teal = teal,
+                    airbnbRed = airbnbRed,
                     onSubmit = {
                         recordedVideoUri?.let { uri ->
                             faceAuthViewModel.registerWithVideo(uri)
@@ -154,7 +160,7 @@ fun FaceAuthScreen(
 
             else -> {
                 RecordingContent(
-                    teal = teal,
+                    airbnbRed = airbnbRed,
                     isRecording = isRecording,
                     recordingProgress = recordingProgress,
                     onVideoRecorded = { uri ->
@@ -205,7 +211,7 @@ fun FaceAuthScreen(
 
 @Composable
 private fun InstructionsContent(
-    teal: Color,
+    airbnbRed: Color,
     onStartRecording: () -> Unit
 ) {
     Column(
@@ -226,7 +232,7 @@ private fun InstructionsContent(
                 Icon(
                     imageVector = Icons.Default.Face,
                     contentDescription = null,
-                    tint = teal,
+                    tint = airbnbRed,
                     modifier = Modifier.size(64.dp)
                 )
 
@@ -236,7 +242,7 @@ private fun InstructionsContent(
                     text = "Face Authentication Setup",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = teal,
+                    color = airbnbRed,
                     textAlign = TextAlign.Center
                 )
 
@@ -278,7 +284,7 @@ private fun InstructionsContent(
                 Button(
                     onClick = onStartRecording,
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = teal)
+                    colors = ButtonDefaults.buttonColors(containerColor = airbnbRed)
                 ) {
                     Text("Start Recording", color = Color.White)
                 }
@@ -289,7 +295,7 @@ private fun InstructionsContent(
 
 @Composable
 private fun RecordingContent(
-    teal: Color,
+    airbnbRed: Color,
     isRecording: Boolean,
     recordingProgress: Float,
     onVideoRecorded: (Uri) -> Unit,
@@ -318,7 +324,7 @@ private fun RecordingContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 32.dp, vertical = 8.dp),
-                color = teal
+                color = airbnbRed
             )
         }
 
@@ -347,7 +353,7 @@ private fun RecordingContent(
                 .size(80.dp),
             shape = CircleShape,
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (isRecording) Color.Red else teal
+                containerColor = if (isRecording) Color.Red else airbnbRed
             ),
             enabled = !isRecording
         ) {
@@ -365,7 +371,7 @@ private fun RecordingContent(
 
 @Composable
 private fun ReviewContent(
-    teal: Color,
+    airbnbRed: Color,
     onSubmit: () -> Unit,
     onRetake: () -> Unit
 ) {
@@ -388,7 +394,7 @@ private fun ReviewContent(
                     text = "Recording Complete!",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = teal
+                    color = airbnbRed
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -415,7 +421,7 @@ private fun ReviewContent(
                     Button(
                         onClick = onSubmit,
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = teal)
+                        colors = ButtonDefaults.buttonColors(containerColor = airbnbRed)
                     ) {
                         Text("Process Video")
                     }
@@ -427,7 +433,7 @@ private fun ReviewContent(
 
 @Composable
 private fun ProcessingContent(
-    teal: Color,
+    airbnbRed: Color,
     currentStep: String,
     isTrainingComplete: Boolean,
     trainingStatus: String
@@ -442,7 +448,7 @@ private fun ProcessingContent(
         if (!isTrainingComplete) {
             CircularProgressIndicator(
                 modifier = Modifier.size(64.dp),
-                color = teal
+                color = airbnbRed
             )
         } else {
             Icon(
@@ -459,7 +465,7 @@ private fun ProcessingContent(
             text = if (isTrainingComplete) "Setup Complete!" else "Setting Up Face Authentication...",
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
-            color = if (isTrainingComplete) Color(0xFF4CAF50) else teal
+            color = if (isTrainingComplete) Color(0xFF4CAF50) else airbnbRed
         )
 
         Spacer(modifier = Modifier.height(8.dp))
@@ -484,7 +490,7 @@ private fun ProcessingContent(
 
 @Composable
 private fun TrainingStatusContent(
-    teal: Color,
+    airbnbRed: Color,
     faceAuthViewModel: FaceAuthViewModel,
     trainingStatus: String,
     statusMessage: String
@@ -514,7 +520,7 @@ private fun TrainingStatusContent(
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(64.dp),
-                    color = teal
+                    color = airbnbRed
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -523,7 +529,7 @@ private fun TrainingStatusContent(
                     text = "Training Your Face Model",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = teal,
+                    color = airbnbRed,
                     textAlign = TextAlign.Center
                 )
 
@@ -560,7 +566,7 @@ private fun TrainingStatusContent(
 
 @Composable
 private fun FaceVerificationTestContent(
-    teal: Color,
+    airbnbRed: Color,
     faceAuthViewModel: FaceAuthViewModel,
     isVerifying: Boolean,
     currentStep: String
@@ -594,7 +600,7 @@ private fun FaceVerificationTestContent(
                 if (isVerifying) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(64.dp),
-                        color = teal
+                        color = airbnbRed
                     )
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -603,7 +609,7 @@ private fun FaceVerificationTestContent(
                         text = "Verifying Your Face",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        color = teal
+                        color = airbnbRed
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -653,7 +659,7 @@ private fun FaceVerificationTestContent(
                             uri?.let { cameraLauncher.launch(it) }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = teal)
+                        colors = ButtonDefaults.buttonColors(containerColor = airbnbRed)
                     ) {
                         Icon(
                             imageVector = Icons.Default.Face,
@@ -671,7 +677,7 @@ private fun FaceVerificationTestContent(
 
 @Composable
 private fun VerificationResultContent(
-    teal: Color,
+    airbnbRed: Color,
     isAuthenticated: Boolean,
     probability: Float,
     onComplete: () -> Unit
@@ -739,7 +745,7 @@ private fun VerificationResultContent(
                     onClick = onComplete,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = if (isAuthenticated) Color(0xFF4CAF50) else teal
+                        containerColor = if (isAuthenticated) Color(0xFF4CAF50) else airbnbRed
                     )
                 ) {
                     Text(if (isAuthenticated) "Complete Setup" else "Try Again")

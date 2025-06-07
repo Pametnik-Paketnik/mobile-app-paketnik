@@ -33,7 +33,13 @@ fun LoginFaceVerificationScreen(
     onLogout: () -> Unit
 ) {
     val context = LocalContext.current
-    val teal = Color(0xFF008C9E)
+    
+    // AirBnb-style color palette
+    val airbnbRed = Color(0xFFFF5A5F)
+    val lightGray = Color(0xFFF7F7F7)
+    val cardWhite = Color(0xFFFFFFFF)
+    val textDark = Color(0xFF484848)
+    val textLight = Color(0xFF767676)
     
     // Create ViewModel for this screen
     val faceAuthViewModel: FaceAuthViewModel = viewModel {
@@ -77,14 +83,14 @@ fun LoginFaceVerificationScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF5F5F5)),
+            .background(lightGray),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // Top Bar
         TopAppBar(
             title = { Text("Face Verification Required") },
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = teal,
+                containerColor = airbnbRed,
                 titleContentColor = Color.White
             ),
             actions = {
@@ -116,7 +122,7 @@ fun LoginFaceVerificationScreen(
                         ) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(64.dp),
-                                color = teal
+                                color = airbnbRed
                             )
 
                             Spacer(modifier = Modifier.height(24.dp))
@@ -125,7 +131,7 @@ fun LoginFaceVerificationScreen(
                                 text = "Verifying Your Identity",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = teal
+                                color = airbnbRed
                             )
 
                             Spacer(modifier = Modifier.height(16.dp))
@@ -183,18 +189,18 @@ fun LoginFaceVerificationScreen(
                             if (!uiState.isAuthenticated) {
                                 Spacer(modifier = Modifier.height(24.dp))
                                 
-                                Button(
-                                    onClick = {
-                                        // Reset state and try again
-                                        faceAuthViewModel.clearMessages()
-                                        faceAuthViewModel.resetState()
-                                        capturedImageUri = null
-                                    },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = ButtonDefaults.buttonColors(containerColor = teal)
-                                ) {
-                                    Text("Try Again")
-                                }
+                                                                    Button(
+                                        onClick = {
+                                            // Reset state and try again
+                                            faceAuthViewModel.clearMessages()
+                                            faceAuthViewModel.resetState()
+                                            capturedImageUri = null
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = ButtonDefaults.buttonColors(containerColor = airbnbRed)
+                                    ) {
+                                        Text("Try Again")
+                                    }
                             }
                         }
                     }
@@ -214,7 +220,7 @@ fun LoginFaceVerificationScreen(
                                 imageVector = Icons.Default.Face,
                                 contentDescription = null,
                                 modifier = Modifier.size(64.dp),
-                                tint = teal
+                                tint = airbnbRed
                             )
 
                             Spacer(modifier = Modifier.height(24.dp))
@@ -223,7 +229,7 @@ fun LoginFaceVerificationScreen(
                                 text = "Face Verification Required",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold,
-                                color = teal,
+                                color = airbnbRed,
                                 textAlign = TextAlign.Center
                             )
 
@@ -256,7 +262,7 @@ fun LoginFaceVerificationScreen(
                                     }
                                 },
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(containerColor = teal)
+                                colors = ButtonDefaults.buttonColors(containerColor = airbnbRed)
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Face,
