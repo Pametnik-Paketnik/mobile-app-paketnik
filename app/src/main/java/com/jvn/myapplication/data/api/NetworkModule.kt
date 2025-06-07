@@ -7,7 +7,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
 object NetworkModule {
-    private const val BASE_URL = "https://0042-176-76-224-34.ngrok-free.app"
+    private const val BASE_URL = "https://mammoth-regular-hamster.ngrok-free.app"
 
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
         level = HttpLoggingInterceptor.Level.BODY
@@ -42,5 +42,9 @@ object NetworkModule {
 
     val reservationApi: ReservationApiService by lazy {
         retrofit.create(ReservationApiService::class.java)
+    }
+
+    val faceAuthApi: FaceAuthApiService by lazy {
+        retrofit.create(FaceAuthApiService::class.java)
     }
 }

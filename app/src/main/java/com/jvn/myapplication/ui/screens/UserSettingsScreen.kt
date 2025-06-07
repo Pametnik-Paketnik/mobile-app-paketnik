@@ -3,6 +3,7 @@ package com.jvn.myapplication.ui.screens
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -44,6 +45,7 @@ fun UserSettingsScreen(
     // Animation state
     var isContentVisible by remember { mutableStateOf(false) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showSecuritySettings by remember { mutableStateOf(false) }
 
     // User data
     val userId by authRepository.getUserId().collectAsState(initial = null)
@@ -53,6 +55,14 @@ fun UserSettingsScreen(
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(200)
         isContentVisible = true
+    }
+
+    // Handle security settings screen
+    if (showSecuritySettings) {
+        SecuritySettingsScreen(
+            onBack = { showSecuritySettings = false }
+        )
+        return
     }
 
     Column(
@@ -173,7 +183,7 @@ fun UserSettingsScreen(
                             icon = Icons.Default.Lock,
                             title = "Security & Privacy",
                             subtitle = "Manage your security settings",
-                            onClick = { /* TODO: Navigate to security settings */ }
+                            onClick = { showSecuritySettings = true }
                         ),
                         SettingsItem(
                             icon = Icons.Default.Build,
@@ -404,6 +414,7 @@ private fun SettingsItemRow(item: SettingsItem) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { item.onClick() }
             .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

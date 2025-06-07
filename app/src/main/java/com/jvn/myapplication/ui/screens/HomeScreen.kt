@@ -29,11 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jvn.myapplication.data.repository.AuthRepository
-import com.jvn.myapplication.data.repository.FaceVerificationRepository
-import com.jvn.myapplication.ui.face.FaceVerificationScreen
-import com.jvn.myapplication.ui.face.FaceVerificationViewModel
 import com.jvn.myapplication.ui.main.QRCodeScanner
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -54,11 +50,9 @@ fun HomeScreen() {
 
     // Repositories
     val authRepository = remember { AuthRepository(context) }
-    val faceVerificationRepository = remember { FaceVerificationRepository(context) }
 
     // State variables
     var isScanningActive by remember { mutableStateOf(false) }
-    var showFaceVerification by remember { mutableStateOf(false) }
     
     // User data from repository
     val userId by authRepository.getUserId().collectAsState(initial = null)
@@ -83,24 +77,7 @@ fun HomeScreen() {
         }
     }
 
-    // Handle face verification screen
-    if (showFaceVerification && userId != null) {
-        val faceVerificationViewModel: FaceVerificationViewModel = viewModel {
-            FaceVerificationViewModel(faceVerificationRepository, userId!!)
-        }
-        FaceVerificationScreen(
-            faceVerificationViewModel = faceVerificationViewModel,
-            onVerificationSuccess = {
-                showFaceVerification = false
-                Toast.makeText(context, "✅ Face verified! Opening box...", Toast.LENGTH_LONG).show()
-            },
-            onSkip = {
-                showFaceVerification = false
-                Toast.makeText(context, "⏭️ Face verification skipped", Toast.LENGTH_SHORT).show()
-            }
-        )
-        return
-    }
+
 
     Column(
         modifier = Modifier
@@ -194,7 +171,7 @@ fun HomeScreen() {
                         QRCodeScanner(
                             onQrCodeScanned = { boxId ->
                                 isScanningActive = false
-                                showFaceVerification = true
+                                Toast.makeText(context, "✅ QR Code scanned! Box ID: $boxId", Toast.LENGTH_LONG).show()
                             },
                             modifier = Modifier.fillMaxSize()
                         )
