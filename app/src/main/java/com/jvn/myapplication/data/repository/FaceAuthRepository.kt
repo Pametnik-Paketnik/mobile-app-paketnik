@@ -12,8 +12,10 @@ import com.jvn.myapplication.data.api.FaceStatusResponse
 import com.jvn.myapplication.data.api.FaceVerifyResponse
 import com.jvn.myapplication.data.api.NetworkModule
 import com.jvn.myapplication.utils.dataStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -23,12 +25,21 @@ class FaceAuthRepository(private val context: Context) {
     private val faceAuthApi: FaceAuthApiService = NetworkModule.faceAuthApi
     private val TOKEN_KEY = stringPreferencesKey("auth_token")
 
-    suspend fun registerFaceWithVideo(videoUri: Uri, userId: String): Result<String> {
+    suspend fun registerFaceWithVideo(
+        videoUri: Uri, 
+        userId: String,
+        onProgress: ((String) -> Unit)? = null
+    ): Result<String> {
         return try {
             Log.d("FaceAuth", "Processing 10-second video for registration: $videoUri")
 
-            // Extract every 5th frame from 10-second video
-            val frames = extractEveryFifthFrame(videoUri)
+            // Extract every 5th frame from 10-second video on IO dispatcher
+            onProgress?.invoke("Extracting frames from video...")
+            val frames = withContext(Dispatchers.IO) {
+                extractEveryFifthFrame(videoUri) { progress ->
+                    onProgress?.invoke("Extracting frame $progress...")
+                }
+            }
             
             if (frames.isEmpty()) {
                 return Result.failure(Exception("No frames could be extracted from video"))
@@ -36,14 +47,19 @@ class FaceAuthRepository(private val context: Context) {
 
             Log.d("FaceAuth", "Extracted ${frames.size} frames for registration")
 
-            // Convert frames to multipart files
-            val imageParts = frames.mapIndexed { index, bitmap ->
-                val byteArray = bitmapToJpegBytes(bitmap)
-                val requestBody = byteArray.toRequestBody("image/jpeg".toMediaTypeOrNull())
-                MultipartBody.Part.createFormData("files", "frame_$index.jpg", requestBody)
+            // Convert frames to multipart files on IO dispatcher
+            onProgress?.invoke("Converting frames to images...")
+            val imageParts = withContext(Dispatchers.IO) {
+                frames.mapIndexed { index, bitmap ->
+                    onProgress?.invoke("Converting frame ${index + 1}/${frames.size}...")
+                    val byteArray = bitmapToJpegBytes(bitmap)
+                    val requestBody = byteArray.toRequestBody("image/jpeg".toMediaTypeOrNull())
+                    MultipartBody.Part.createFormData("files", "frame_$index.jpg", requestBody)
+                }
             }
 
             // Send to backend
+            onProgress?.invoke("Uploading images to server...")
             val token = getAuthToken().first()
             if (token.isNullOrEmpty()) {
                 return Result.failure(Exception("No auth token available"))
@@ -73,11 +89,13 @@ class FaceAuthRepository(private val context: Context) {
         return try {
             Log.d("FaceAuth", "Verifying face with image: $imageUri")
 
-            // Convert image to multipart
-            val bitmap = uriToBitmap(imageUri)
-            val byteArray = bitmapToJpegBytes(bitmap)
-            val requestBody = byteArray.toRequestBody("image/jpeg".toMediaTypeOrNull())
-            val imagePart = MultipartBody.Part.createFormData("file", "verification.jpg", requestBody)
+            // Convert image to multipart on IO dispatcher
+            val imagePart = withContext(Dispatchers.IO) {
+                val bitmap = uriToBitmap(imageUri)
+                val byteArray = bitmapToJpegBytes(bitmap)
+                val requestBody = byteArray.toRequestBody("image/jpeg".toMediaTypeOrNull())
+                MultipartBody.Part.createFormData("file", "verification.jpg", requestBody)
+            }
 
             val token = getAuthToken().first()
             if (token.isNullOrEmpty()) {
@@ -148,7 +166,7 @@ class FaceAuthRepository(private val context: Context) {
         }
     }
 
-    private fun extractEveryFifthFrame(videoUri: Uri): List<Bitmap> {
+    private fun extractEveryFifthFrame(videoUri: Uri, onProgress: ((Int) -> Unit)? = null): List<Bitmap> {
         val retriever = MediaMetadataRetriever()
         val frames = mutableListOf<Bitmap>()
 
@@ -175,6 +193,7 @@ class FaceAuthRepository(private val context: Context) {
                         
                         if (bitmap != null) {
                             frames.add(bitmap)
+                            onProgress?.invoke(frames.size)
                             Log.d("FaceAuth", "Extracted frame ${frames.size} at index $frameIndex (${timeUs}μs)")
                         }
                     }

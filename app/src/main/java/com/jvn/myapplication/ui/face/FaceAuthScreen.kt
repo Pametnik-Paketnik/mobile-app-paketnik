@@ -69,33 +69,112 @@ fun FaceAuthScreen(
     }
 
     Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFF5F5F5)),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Face Authentication Setup",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = teal,
-            textAlign = TextAlign.Center
+        // Top Bar
+        TopAppBar(
+            title = { Text("Face Authentication Setup") },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = teal,
+                titleContentColor = Color.White
+            ),
+            actions = {
+                TextButton(
+                    onClick = onSkip
+                ) {
+                    Text("Skip", color = Color.White)
+                }
+            }
         )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        Text(
-            text = "This feature will be implemented with 10-second video recording",
-            style = MaterialTheme.typography.bodyLarge,
-            textAlign = TextAlign.Center
-        )
-        
-        Spacer(modifier = Modifier.height(24.dp))
-        
-        Button(
-            onClick = onRegistrationSuccess,
-            colors = ButtonDefaults.buttonColors(containerColor = teal)
-        ) {
-            Text("Continue")
+
+        when {
+            showInstructions -> {
+                InstructionsContent(
+                    teal = teal,
+                    onStartRecording = {
+                        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+                            == PackageManager.PERMISSION_GRANTED) {
+                            showInstructions = false
+                        } else {
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        }
+                    }
+                )
+            }
+
+            uiState.isProcessing -> {
+                ProcessingContent(
+                    teal = teal,
+                    currentStep = uiState.currentStep,
+                    isTrainingComplete = uiState.isTrainingComplete,
+                    trainingStatus = uiState.trainingStatus
+                )
+            }
+
+            recordedVideoUri != null -> {
+                ReviewContent(
+                    teal = teal,
+                    onSubmit = {
+                        recordedVideoUri?.let { uri ->
+                            faceAuthViewModel.registerWithVideo(uri)
+                        }
+                    },
+                    onRetake = {
+                        recordedVideoUri = null
+                    }
+                )
+            }
+
+            else -> {
+                RecordingContent(
+                    teal = teal,
+                    isRecording = isRecording,
+                    recordingProgress = recordingProgress,
+                    onVideoRecorded = { uri ->
+                        recordedVideoUri = uri
+                        isRecording = false
+                    },
+                    onRecordingStateChanged = { recording ->
+                        isRecording = recording
+                    }
+                )
+            }
+        }
+
+        // Error handling
+        uiState.errorMessage?.let { error ->
+            LaunchedEffect(error) {
+                // Show error for 3 seconds
+                delay(3000)
+                faceAuthViewModel.clearMessages()
+            }
+            
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE))
+            ) {
+                Row(
+                    modifier = Modifier.padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = Color(0xFFD32F2F)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = error,
+                        color = Color(0xFFD32F2F),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
         }
     }
 }
@@ -249,7 +328,7 @@ private fun RecordingContent(
             enabled = !isRecording
         ) {
             Icon(
-                imageVector = if (isRecording) Icons.Default.Stop else Icons.Default.PlayArrow,
+                imageVector = if (isRecording) Icons.Default.Warning else Icons.Default.PlayArrow,
                 contentDescription = if (isRecording) "Stop" else "Record",
                 modifier = Modifier.size(32.dp),
                 tint = Color.White

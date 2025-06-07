@@ -25,8 +25,9 @@ class FaceAuthViewModel(
                 currentStep = "Extracting frames from 10-second video..."
             )
 
-            faceAuthRepository.registerFaceWithVideo(videoUri, userId)
-                .onSuccess { message ->
+            faceAuthRepository.registerFaceWithVideo(videoUri, userId) { progress ->
+                _uiState.value = _uiState.value.copy(currentStep = progress)
+            }.onSuccess { message ->
                     _uiState.value = _uiState.value.copy(
                         isProcessing = false,
                         isRegistrationComplete = true,
