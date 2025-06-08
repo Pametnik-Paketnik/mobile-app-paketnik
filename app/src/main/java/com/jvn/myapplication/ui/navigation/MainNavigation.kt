@@ -13,9 +13,11 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.jvn.myapplication.ui.screens.BoxesHistoryScreen
 import com.jvn.myapplication.ui.screens.BoxesListScreen
+import com.jvn.myapplication.ui.screens.BoxDetailScreen
 import com.jvn.myapplication.ui.screens.HomeScreen
 import com.jvn.myapplication.ui.screens.UserSettingsScreen
 import com.jvn.myapplication.data.repository.AuthRepository
+import com.jvn.myapplication.data.model.BoxData
 import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,6 +31,10 @@ fun MainNavigation(
     
     // Get user type to determine which home screen to show
     val userType by authRepository.getUserType().collectAsState(initial = null)
+    
+    // State for box detail navigation
+    var selectedBox by remember { mutableStateOf<BoxData?>(null) }
+    var showBoxDetail by remember { mutableStateOf(false) }
     
     // Airbnb-style color palette
     val lightGray = Color(0xFFF7F7F7)
@@ -75,7 +81,12 @@ fun MainNavigation(
                 composable(BottomNavItem.Home.route) {
                     // Show different home screens based on user type
                     when (userType) {
-                        "USER" -> BoxesListScreen()
+                        "USER" -> BoxesListScreen(
+                            onBoxClick = { box ->
+                                selectedBox = box
+                                showBoxDetail = true
+                            }
+                        )
                         "HOST" -> HomeScreen() // Keep existing QR scanner for hosts
                         else -> HomeScreen() // Default fallback
                     }
@@ -88,6 +99,17 @@ fun MainNavigation(
                 composable(BottomNavItem.UserSettings.route) {
                     UserSettingsScreen(onLogout = onLogout)
                 }
+            }
+            
+            // Box Detail Screen overlay
+            if (showBoxDetail && selectedBox != null) {
+                BoxDetailScreen(
+                    box = selectedBox!!,
+                    onBackClick = {
+                        showBoxDetail = false
+                        selectedBox = null
+                    }
+                )
             }
         }
     }

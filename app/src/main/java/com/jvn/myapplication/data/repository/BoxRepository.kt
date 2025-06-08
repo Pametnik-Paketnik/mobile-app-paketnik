@@ -240,6 +240,27 @@ class BoxRepository(private val context: Context) {
         }
     }
 
+    suspend fun getBoxAvailability(boxId: String): Result<com.jvn.myapplication.data.model.BoxAvailabilityResponse> {
+        return try {
+            val token = authRepository.getAuthToken().first()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("No authentication token"))
+            }
+
+            val response = boxApi.getBoxAvailability(boxId, "Bearer $token")
+            
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                val errorBody = response.errorBody()?.string()
+                val errorMessage = "Failed to fetch box availability: ${response.message()}"
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     private fun formatTimestamp(timestamp: String): String {
         return try {
             // Handle ISO 8601 format: "2025-05-29T11:09:51.277Z"

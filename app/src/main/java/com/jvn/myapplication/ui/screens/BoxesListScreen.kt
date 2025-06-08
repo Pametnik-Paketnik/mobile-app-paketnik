@@ -35,7 +35,9 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BoxesListScreen() {
+fun BoxesListScreen(
+    onBoxClick: (BoxData) -> Unit = {}
+) {
     // Airbnb-style color palette
     val airbnbRed = Color(0xFFFF5A5F)
     val darkGray = Color(0xFF484848)
@@ -329,10 +331,7 @@ fun BoxesListScreen() {
                         items(boxes) { box ->
                             BoxCard(
                                 box = box,
-                                onClick = {
-                                    // Handle box selection - could navigate to details or reservation
-                                    // For now, we'll just show a placeholder action
-                                }
+                                onClick = { onBoxClick(box) }
                             )
                         }
                         

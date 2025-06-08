@@ -100,5 +100,8 @@ dependencies {
 
     // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.5.0")
+    
+    // Foundation for HorizontalPager
+    implementation("androidx.compose.foundation:foundation:1.5.4")
 
 }
