@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.jvn.myapplication.MainActivity
 import com.jvn.myapplication.workers.LoginApprovalWorker
 
 class LoginApprovalReceiver : BroadcastReceiver() {
@@ -22,6 +23,7 @@ class LoginApprovalReceiver : BroadcastReceiver() {
                     putExtra("pendingAuthId", pendingAuthId)
                     flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
                 }
+                
                 context.startActivity(approveIntent)
             }
             "DENY_LOGIN" -> {

@@ -26,13 +26,24 @@ import com.jvn.myapplication.ui.main.AuthState
 import com.jvn.myapplication.ui.main.MainAuthViewModel
 import com.jvn.myapplication.ui.navigation.MainNavigation
 import com.jvn.myapplication.ui.face.LoginFaceVerificationScreen
+import com.jvn.myapplication.utils.FirebaseTestHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 
 class MainActivity : ComponentActivity() {
     
-    private var pendingLoginApproval: LoginApprovalData? = null
+    private var _pendingLoginApproval = mutableStateOf<LoginApprovalData?>(null)
+    val pendingLoginApproval: State<LoginApprovalData?> = _pendingLoginApproval
+    
+    fun clearPendingLoginApproval() {
+        _pendingLoginApproval.value = null
+    }
     
     data class LoginApprovalData(
         val pendingAuthId: String,
@@ -41,8 +52,22 @@ class MainActivity : ComponentActivity() {
         val location: String
     )
     
+    // Notification permission launcher
+    private val notificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            Log.d("MainActivity", "✅ Notification permission granted")
+        } else {
+            Log.d("MainActivity", "❌ Notification permission denied")
+        }
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Request notification permission for Android 13+
+        requestNotificationPermission()
         
         // Initialize Firebase and get FCM token
         initializeFirebase()
@@ -57,12 +82,22 @@ class MainActivity : ComponentActivity() {
         }
     }
     
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        intent?.let { handleNotificationIntent(it) }
+        setIntent(intent)
+        handleNotificationIntent(intent)
     }
     
     private fun initializeFirebase() {
+        // Test Firebase setup
+        FirebaseTestHelper.logFirebaseInfo()
+        
+        // Test Firebase setup in background
+        CoroutineScope(Dispatchers.IO).launch {
+            val isSetupSuccessful = FirebaseTestHelper.testFirebaseSetup(this@MainActivity)
+            Log.d("Firebase", if (isSetupSuccessful) "🎉 Firebase setup complete!" else "❌ Firebase setup failed!")
+        }
+        
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
             if (!task.isSuccessful) {
                 Log.w("FCM", "Fetching FCM registration token failed", task.exception)
@@ -85,7 +120,9 @@ class MainActivity : ComponentActivity() {
         }
     }
     
-    private fun handleNotificationIntent(intent: Intent) {
+    private fun handleNotificationIntent(intent: Intent?) {
+        if (intent == null) return
+        
         when (intent.action) {
             "LOGIN_APPROVAL" -> {
                 val pendingAuthId = intent.getStringExtra("pendingAuthId")
@@ -94,21 +131,42 @@ class MainActivity : ComponentActivity() {
                 val location = intent.getStringExtra("location")
                 
                 if (pendingAuthId != null && username != null && ip != null && location != null) {
-                    pendingLoginApproval = LoginApprovalData(pendingAuthId, username, ip, location)
+                    _pendingLoginApproval.value = LoginApprovalData(pendingAuthId, username, ip, location)
+                    Log.d("MainActivity", "🔔 Login approval request received for user: $username")
                 }
             }
             "LOGIN_APPROVAL_FACE_VERIFICATION" -> {
                 val pendingAuthId = intent.getStringExtra("pendingAuthId")
                 if (pendingAuthId != null) {
                     // This will trigger face verification directly
-                    pendingLoginApproval = LoginApprovalData(
+                    _pendingLoginApproval.value = LoginApprovalData(
                         pendingAuthId = pendingAuthId,
                         username = "Quick Approval",
                         ip = "Unknown",
                         location = "Unknown"
                     )
+                    Log.d("MainActivity", "🔐 Quick face verification triggered")
                 }
             }
+        }
+    }
+    
+    private fun requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            when {
+                ContextCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    Log.d("MainActivity", "✅ Notification permission already granted")
+                }
+                else -> {
+                    Log.d("MainActivity", "🔔 Requesting notification permission")
+                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                }
+            }
+        } else {
+            Log.d("MainActivity", "📱 Notification permission not required (Android < 13)")
         }
     }
 }
@@ -125,26 +183,27 @@ fun Direct4meApp() {
     
     // Get the activity to access pendingLoginApproval
     val activity = context as? MainActivity
-    val pendingApproval = activity?.pendingLoginApproval
+    val pendingApproval by (activity?.pendingLoginApproval ?: remember { mutableStateOf(null) })
 
     println("DEBUG: Current authState in UI: $authState")
     println("DEBUG: Pending approval: $pendingApproval")
 
-    // Check if we have a pending login approval to handle
-    if (pendingApproval != null && authState == AuthState.AUTHENTICATED) {
+    // Check if we have a pending login approval to handle - show immediately regardless of auth state
+    val currentPendingApproval = pendingApproval
+    if (currentPendingApproval != null) {
         LoginApprovalScreen(
-            pendingAuthId = pendingApproval.pendingAuthId,
-            username = pendingApproval.username,
-            ip = pendingApproval.ip,
-            location = pendingApproval.location,
+            pendingAuthId = currentPendingApproval.pendingAuthId,
+            username = currentPendingApproval.username,
+            ip = currentPendingApproval.ip,
+            location = currentPendingApproval.location,
             faceAuthRepository = faceAuthRepository,
             onApprovalComplete = {
                 // Clear the pending approval and return to main app
-                activity.pendingLoginApproval = null
+                activity?.clearPendingLoginApproval()
             },
             onDeny = {
                 // Clear the pending approval and return to main app
-                activity.pendingLoginApproval = null
+                activity?.clearPendingLoginApproval()
             }
         )
     } else {

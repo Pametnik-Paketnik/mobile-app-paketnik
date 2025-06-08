@@ -91,7 +91,7 @@ dependencies {
     implementation("androidx.navigation:navigation-runtime-ktx:2.7.6")
 
     // Firebase and Push Notifications
-    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.firebase:firebase-analytics-ktx")
     

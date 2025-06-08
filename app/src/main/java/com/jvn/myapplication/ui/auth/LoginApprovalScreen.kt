@@ -4,9 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Computer
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,8 +17,9 @@ import androidx.compose.ui.unit.sp
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import androidx.compose.ui.platform.LocalContext
 import com.jvn.myapplication.data.repository.FaceAuthRepository
-import com.jvn.myapplication.ui.face.FaceAuthScreen
+import com.jvn.myapplication.ui.face.LoginFaceVerificationScreen
 import com.jvn.myapplication.workers.LoginApprovalWorker
 import kotlinx.coroutines.delay
 
@@ -35,39 +34,30 @@ fun LoginApprovalScreen(
     onApprovalComplete: () -> Unit,
     onDeny: () -> Unit
 ) {
+    val context = LocalContext.current
     var showFaceVerification by remember { mutableStateOf(false) }
     var isProcessing by remember { mutableStateOf(false) }
 
     if (showFaceVerification) {
-        FaceAuthScreen(
+        // Use the same single-photo verification as login
+        LoginFaceVerificationScreen(
             faceAuthRepository = faceAuthRepository,
-            onRegistrationComplete = { success ->
-                if (success) {
-                    // Face verification successful - approve the login
-                    LaunchedEffect(Unit) {
-                        isProcessing = true
-                        try {
-                            val approveWork = OneTimeWorkRequestBuilder<LoginApprovalWorker>()
-                                .setInputData(workDataOf(
-                                    "pendingAuthId" to pendingAuthId,
-                                    "action" to "approve"
-                                ))
-                                .build()
-                            
-                            WorkManager.getInstance(faceAuthRepository.context).enqueue(approveWork)
-                            
-                            // Wait a moment for the work to complete
-                            delay(2000)
-                            onApprovalComplete()
-                        } catch (e: Exception) {
-                            isProcessing = false
-                            // Handle error - could show error message
-                        }
-                    }
-                } else {
-                    // Face verification failed - go back to approval screen
-                    showFaceVerification = false
-                }
+            onVerificationSuccess = {
+                // Face verification successful - approve the login
+                isProcessing = true
+                val approveWork = OneTimeWorkRequestBuilder<LoginApprovalWorker>()
+                    .setInputData(workDataOf(
+                        "pendingAuthId" to pendingAuthId,
+                        "action" to "approve"
+                    ))
+                    .build()
+                
+                WorkManager.getInstance(context).enqueue(approveWork)
+                onApprovalComplete()
+            },
+            onLogout = {
+                // User chooses to deny instead of verifying
+                onDeny()
             }
         )
     } else {
@@ -90,7 +80,7 @@ fun LoginApprovalScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Security,
+                        imageVector = Icons.Default.Lock,
                         contentDescription = "Security",
                         tint = Color.White,
                         modifier = Modifier.size(40.dp)
@@ -136,7 +126,7 @@ fun LoginApprovalScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Computer,
+                            imageVector = Icons.Default.Person,
                             contentDescription = "User",
                             tint = Color(0xFF008C9E),
                             modifier = Modifier.size(20.dp)
@@ -254,7 +244,7 @@ fun LoginApprovalScreen(
                                 ))
                                 .build()
                             
-                            WorkManager.getInstance(faceAuthRepository.context).enqueue(denyWork)
+                            WorkManager.getInstance(context).enqueue(denyWork)
                             onDeny()
                         },
                         modifier = Modifier

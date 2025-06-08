@@ -86,10 +86,12 @@ class PaketnikFirebaseMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Create approve action
+        // Create approve action with explicit intent
         val approveIntent = Intent(this, LoginApprovalReceiver::class.java).apply {
             action = "APPROVE_LOGIN"
             putExtra("pendingAuthId", pendingAuthId)
+            // Make the intent explicit by setting the component
+            component = android.content.ComponentName(this@PaketnikFirebaseMessagingService, LoginApprovalReceiver::class.java)
         }
         val approvePendingIntent = PendingIntent.getBroadcast(
             this,
@@ -98,10 +100,12 @@ class PaketnikFirebaseMessagingService : FirebaseMessagingService() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Create deny action
+        // Create deny action with explicit intent
         val denyIntent = Intent(this, LoginApprovalReceiver::class.java).apply {
             action = "DENY_LOGIN"
             putExtra("pendingAuthId", pendingAuthId)
+            // Make the intent explicit by setting the component
+            component = android.content.ComponentName(this@PaketnikFirebaseMessagingService, LoginApprovalReceiver::class.java)
         }
         val denyPendingIntent = PendingIntent.getBroadcast(
             this,
@@ -119,7 +123,7 @@ class PaketnikFirebaseMessagingService : FirebaseMessagingService() {
                     .bigText("$username is trying to log in from $ip ($location). Tap to verify your identity with face recognition.")
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_SECURITY)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .addAction(
