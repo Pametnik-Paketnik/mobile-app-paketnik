@@ -51,6 +51,12 @@ fun MainNavigation(
                 items = bottomNavItems,
                 currentDestination = currentRoute,
                 onItemClick = { route ->
+                    // If BoxDetailScreen is shown, close it when navigating to another tab
+                    if (showBoxDetail) {
+                        showBoxDetail = false
+                        selectedBox = null
+                    }
+                    
                     if (currentRoute != route) {
                         navController.navigate(route) {
                             // Pop up to the start destination to avoid building up a large stack

@@ -378,14 +378,25 @@ fun BoxCard(
                     onSuccess = { availability ->
                         val today = LocalDate.now()
                         
-                        // Check if today falls within any unavailable date range
+                        // Check if today falls within any active unavailable date range
                         isCurrentlyUnavailable = availability.unavailableDates.any { dateRange ->
                             try {
-                                val startDate = LocalDate.parse(dateRange.startDate.take(10))
-                                val endDate = LocalDate.parse(dateRange.endDate.take(10))
+                                // Only consider dates unavailable if the reservation is active
+                                val isActiveReservation = when (dateRange.status.uppercase()) {
+                                    "PENDING", "CHECKED_IN", "BOOKED", "CONFIRMED" -> true
+                                    "CHECKED_OUT", "COMPLETED", "CANCELLED" -> false
+                                    else -> true // Default to unavailable for unknown statuses
+                                }
                                 
-                                // Check if today is within this range (inclusive)
-                                !today.isBefore(startDate) && !today.isAfter(endDate)
+                                if (isActiveReservation) {
+                                    val startDate = LocalDate.parse(dateRange.startDate.take(10))
+                                    val endDate = LocalDate.parse(dateRange.endDate.take(10))
+                                    
+                                    // Check if today is within this range (inclusive)
+                                    !today.isBefore(startDate) && !today.isAfter(endDate)
+                                } else {
+                                    false // Inactive reservations don't make dates unavailable
+                                }
                             } catch (e: Exception) {
                                 false // If parsing fails, assume available
                             }
@@ -429,38 +440,29 @@ fun BoxCard(
                 val primaryImage = box.images?.find { it.isPrimary == true } ?: box.images?.firstOrNull()
                 
                 if (primaryImage?.imageUrl != null) {
-                    // Fix localhost URL for mobile device access and handle different URL formats
-                    val originalUrl = primaryImage.imageUrl
-                    var imageUrl = originalUrl
-                        .replace("localhost", "10.0.2.2") // Use Android emulator host IP
-                        .replace("127.0.0.1", "10.0.2.2") // Also handle 127.0.0.1
+                    // Transform image URL based on current development mode (emulator vs real device)
+                    val imageUrl = com.jvn.myapplication.config.ApiConfig.transformImageUrl(primaryImage.imageUrl)
                     
-                    // Add HTTP protocol if missing
-                    if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
-                        imageUrl = "http://$imageUrl"
-                    }
-                    
-
-                    
-                    // State to track image loading
-                    var imageState by remember { mutableStateOf<String>("loading") }
-                    
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        // Always render AsyncImage so callbacks can fire
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(imageUrl)
-                                .crossfade(true)
-                                .listener(
-                                    onStart = { imageState = "loading" },
-                                    onSuccess = { _, _ -> imageState = "success" },
-                                    onError = { _, _ -> imageState = "error" }
-                                )
-                                .build(),
-                            contentDescription = "Box image",
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
+                    if (imageUrl != null) {
+                        // State to track image loading
+                        var imageState by remember { mutableStateOf<String>("loading") }
+                        
+                        Box(modifier = Modifier.fillMaxSize()) {
+                            // Always render AsyncImage so callbacks can fire
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(imageUrl)
+                                    .crossfade(true)
+                                    .listener(
+                                        onStart = { imageState = "loading" },
+                                        onSuccess = { _, _ -> imageState = "success" },
+                                        onError = { _, _ -> imageState = "error" }
+                                    )
+                                    .build(),
+                                contentDescription = "Box image",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
                         
                         // Overlay loading/error states on top
                         when (imageState) {
@@ -509,6 +511,36 @@ fun BoxCard(
                                 }
                             }
                             // "success" state shows the image without overlay
+                        }
+                    }
+                    } else {
+                        // URL transformation failed - show placeholder
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(
+                                    brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                        colors = listOf(lightGray, lightGray.copy(alpha = 0.8f))
+                                    )
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Home,
+                                    contentDescription = null,
+                                    tint = textLight,
+                                    modifier = Modifier.size(48.dp)
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Image not available",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = textLight
+                                )
+                            }
                         }
                     }
                 } else {

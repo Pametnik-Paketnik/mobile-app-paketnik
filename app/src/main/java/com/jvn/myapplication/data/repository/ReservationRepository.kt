@@ -6,6 +6,8 @@ import com.jvn.myapplication.data.api.CreateReservationRequest
 import com.jvn.myapplication.data.api.ReservationResponse
 import com.jvn.myapplication.data.model.CheckInRequest
 import com.jvn.myapplication.data.model.CheckInResponse
+import com.jvn.myapplication.data.model.CheckOutRequest
+import com.jvn.myapplication.data.model.CheckOutResponse
 import com.jvn.myapplication.data.model.Reservation
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
@@ -78,6 +80,32 @@ class ReservationRepository(private val context: Context) {
             }
         } catch (e: Exception) {
             println("🔍 DEBUG - ReservationRepository: Check-in exception: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun checkOut(reservationId: Int): Result<CheckOutResponse> {
+        return try {
+            val token = authRepository.getAuthToken().first()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("No authentication token"))
+            }
+
+            println("🔍 DEBUG - ReservationRepository: Checking out reservation $reservationId")
+            val request = CheckOutRequest(reservationId)
+            val response = reservationApi.checkOut("Bearer $token", request)
+            
+            if (response.isSuccessful && response.body() != null) {
+                val checkOutResponse = response.body()!!
+                println("🔍 DEBUG - ReservationRepository: Check-out response: ${checkOutResponse.message}")
+                Result.success(checkOutResponse)
+            } else {
+                val errorMessage = "Check-out failed: ${response.message()}"
+                println("🔍 DEBUG - ReservationRepository: $errorMessage")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            println("🔍 DEBUG - ReservationRepository: Check-out exception: ${e.message}")
             Result.failure(e)
         }
     }

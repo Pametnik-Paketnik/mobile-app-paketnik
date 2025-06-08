@@ -1,0 +1,13 @@
+version: "2"
+authtoken: YOUR_NGROK_AUTH_TOKEN  # Replace with your ngrok auth token
+
+tunnels:
+  api:
+    addr: 3000
+    proto: http
+    hostname: mammoth-regular-hamster.ngrok-free.app  # Your existing API tunnel
+    
+  minio:
+    addr: 9000
+    proto: http
+    # Let ngrok assign a random subdomain for MinIO, or specify one if you have a paid plan 

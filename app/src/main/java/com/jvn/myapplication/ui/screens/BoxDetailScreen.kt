@@ -102,20 +102,32 @@ fun BoxDetailScreen(
                         
                         availability.unavailableDates.forEach { dateRange ->
                             try {
-                                val startDate = LocalDate.parse(dateRange.startDate.take(10))
-                                val endDate = LocalDate.parse(dateRange.endDate.take(10))
-                                
-                                // Check if today falls within this range for current status
-                                if (!today.isBefore(startDate) && !today.isAfter(endDate)) {
-                                    isCurrentlyUnavailable = true
+                                // Only consider dates unavailable if the reservation is active
+                                // Skip CHECKED_OUT, COMPLETED, CANCELLED reservations
+                                val isActiveReservation = when (dateRange.status.uppercase()) {
+                                    "PENDING", "CHECKED_IN", "BOOKED", "CONFIRMED" -> true
+                                    "CHECKED_OUT", "COMPLETED", "CANCELLED" -> false
+                                    else -> true // Default to unavailable for unknown statuses
                                 }
                                 
-                                // Add all dates from startDate to endDate (inclusive)
-                                var currentDate = startDate
-                                while (!currentDate.isAfter(endDate)) {
-                                    allUnavailableDates.add(currentDate)
-                                    currentDate = currentDate.plusDays(1)
+                                if (isActiveReservation) {
+                                    val startDate = LocalDate.parse(dateRange.startDate.take(10))
+                                    val endDate = LocalDate.parse(dateRange.endDate.take(10))
+                                    
+                                    // Check if today falls within this range for current status
+                                    if (!today.isBefore(startDate) && !today.isAfter(endDate)) {
+                                        isCurrentlyUnavailable = true
+                                    }
+                                    
+                                    // Add all dates from startDate to endDate (inclusive)
+                                    var currentDate = startDate
+                                    while (!currentDate.isAfter(endDate)) {
+                                        allUnavailableDates.add(currentDate)
+                                        currentDate = currentDate.plusDays(1)
+                                    }
                                 }
+                                
+                                println("🔍 DEBUG - BoxDetailScreen: Date range ${dateRange.startDate} to ${dateRange.endDate}, status: ${dateRange.status}, active: $isActiveReservation")
                             } catch (e: Exception) {
                                 println("🔍 DEBUG - BoxDetailScreen: Error parsing date range: ${e.message}")
                             }
@@ -650,16 +662,7 @@ fun ImageGallery(
                 modifier = Modifier.fillMaxSize()
             ) { page ->
                 val image = images[page]
-                val imageUrl = image.imageUrl?.let { url ->
-                    var finalUrl = url
-                        .replace("localhost", "10.0.2.2")
-                        .replace("127.0.0.1", "10.0.2.2")
-                    
-                    if (!finalUrl.startsWith("http://") && !finalUrl.startsWith("https://")) {
-                        finalUrl = "http://$finalUrl"
-                    }
-                    finalUrl
-                }
+                val imageUrl = com.jvn.myapplication.config.ApiConfig.transformImageUrl(image.imageUrl)
                 
                 AsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)

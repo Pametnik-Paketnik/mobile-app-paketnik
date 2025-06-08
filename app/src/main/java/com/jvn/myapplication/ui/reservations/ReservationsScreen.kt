@@ -24,6 +24,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jvn.myapplication.data.model.Reservation
 import com.jvn.myapplication.data.repository.AuthRepository
 import com.jvn.myapplication.data.repository.ReservationRepository
+import com.jvn.myapplication.ui.screens.OpenBoxScreen
 import kotlinx.coroutines.flow.MutableStateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,6 +43,10 @@ fun ReservationsScreen() {
 
     // State for animations
     var isContentVisible by remember { mutableStateOf(false) }
+    
+    // State for Open Box screen navigation
+    var showOpenBoxScreen by remember { mutableStateOf(false) }
+    var selectedReservationId by remember { mutableStateOf<Int?>(null) }
 
     // User data
     val userId by authRepository.getUserId().collectAsState(initial = null)
@@ -266,7 +271,13 @@ fun ReservationsScreen() {
                                 ReservationCard(
                                     reservation = reservation,
                                     onCheckIn = { viewModel?.checkIn(reservation.id) ?: Unit },
-                                    isCheckingIn = uiState.checkingInReservations.contains(reservation.id)
+                                    onCheckOut = { viewModel?.checkOut(reservation.id) ?: Unit },
+                                    onOpenBox = { reservationId ->
+                                        selectedReservationId = reservationId
+                                        showOpenBoxScreen = true
+                                    },
+                                    isCheckingIn = uiState.checkingInReservations.contains(reservation.id),
+                                    isCheckingOut = uiState.checkingOutReservations.contains(reservation.id)
                                 )
                             }
                         }
@@ -275,13 +286,46 @@ fun ReservationsScreen() {
             }
         }
     }
+    
+    // Open Box Screen overlay
+    if (showOpenBoxScreen && selectedReservationId != null) {
+        OpenBoxScreen(
+            reservationId = selectedReservationId!!,
+            onBackClick = {
+                showOpenBoxScreen = false
+                selectedReservationId = null
+            },
+            onSuccess = { qrCode ->
+                // Handle successful QR scan
+                println("🔍 DEBUG - QR Code scanned: $qrCode")
+                
+                // Determine which action to take based on reservation status
+                val reservation = uiState.reservations.find { it.id == selectedReservationId }
+                if (reservation != null) {
+                    when (reservation.status.uppercase()) {
+                        "PENDING" -> {
+                            viewModel?.checkIn(selectedReservationId!!)
+                        }
+                        "CHECKED_IN" -> {
+                            viewModel?.checkOut(selectedReservationId!!)
+                        }
+                    }
+                }
+                
+                // Close the screen after a delay (handled by OpenBoxScreen)
+            }
+        )
+    }
 }
 
 @Composable
 private fun ReservationCard(
     reservation: Reservation,
     onCheckIn: () -> Unit,
-    isCheckingIn: Boolean
+    onCheckOut: () -> Unit,
+    onOpenBox: (Int) -> Unit,
+    isCheckingIn: Boolean,
+    isCheckingOut: Boolean
 ) {
     // Airbnb-style colors
     val airbnbRed = Color(0xFFFF5A5F)
@@ -345,7 +389,79 @@ private fun ReservationCard(
                 value = formatDate(reservation.checkoutAt)
             )
             
-            // Removed check-in button for guests - check-in should be done through QR scanning or other means
+            Spacer(modifier = Modifier.height(16.dp))
+            
+            // Action buttons based on reservation status
+            when (reservation.status.uppercase()) {
+                "PENDING" -> {
+                    Button(
+                        onClick = { onOpenBox(reservation.id) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = airbnbRed),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = !isCheckingIn
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (isCheckingIn) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("CHECKING IN...")
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "CHECK IN",
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+                "CHECKED_IN" -> {
+                    Button(
+                        onClick = { onOpenBox(reservation.id) },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = !isCheckingOut
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (isCheckingOut) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(16.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("CHECKING OUT...")
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Lock,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "CHECK OUT",
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
