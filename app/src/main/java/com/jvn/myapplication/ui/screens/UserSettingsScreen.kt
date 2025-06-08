@@ -59,7 +59,9 @@ fun UserSettingsScreen(
 
     // User data
     val userId by authRepository.getUserId().collectAsState(initial = null)
-    val username by authRepository.getUsername().collectAsState(initial = null)
+    val name by authRepository.getName().collectAsState(initial = null)
+    val surname by authRepository.getSurname().collectAsState(initial = null)
+    val email by authRepository.getEmail().collectAsState(initial = null)
     val userType by authRepository.getUserType().collectAsState(initial = null)
     
     // Face verification state
@@ -146,14 +148,14 @@ fun UserSettingsScreen(
                             
                             Column {
                                 Text(
-                                    text = username ?: "User",
+                                    text = if (name != null && surname != null) "$name $surname" else "User",
                                     style = MaterialTheme.typography.headlineMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = Color.White,
                                     textAlign = TextAlign.Start
                                 )
                                 Text(
-                                    text = if (userType == "HOST") "Host Account" else "Standard User",
+                                    text = email ?: (if (userType == "HOST") "Host Account" else "Standard User"),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = Color.White.copy(alpha = 0.9f),
                                     textAlign = TextAlign.Start
@@ -203,9 +205,9 @@ fun UserSettingsScreen(
                         ),
                         SettingsItem(
                             icon = Icons.Default.Edit,
-                            title = "Change Username",
-                            subtitle = "Update your username",
-                            onClick = { /* TODO: Navigate to username change */ }
+                            title = "Change Email",
+                            subtitle = "Update your email address",
+                            onClick = { /* TODO: Navigate to email change */ }
                         ),
                         SettingsItem(
                             icon = Icons.Default.Build,

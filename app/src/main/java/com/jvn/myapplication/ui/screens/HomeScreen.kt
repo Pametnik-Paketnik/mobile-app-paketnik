@@ -56,13 +56,14 @@ fun HomeScreen() {
     
     // User data from repository
     val userId by authRepository.getUserId().collectAsState(initial = null)
-    val username by authRepository.getUsername().collectAsState(initial = null)
+    val name by authRepository.getName().collectAsState(initial = null)
+    val email by authRepository.getEmail().collectAsState(initial = null)
     val userType by authRepository.getUserType().collectAsState(initial = null)
 
     // Animation state
     var isContentVisible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(userId, username, userType) {
+    LaunchedEffect(userId, name, userType) {
         delay(300)
         isContentVisible = true
     }
@@ -133,10 +134,10 @@ fun HomeScreen() {
                             )
                         }
                         
-                        if (username != null) {
+                        if (name != null) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "Hello, $username! 👋",
+                                "Hello, $name! 👋",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = Color.White.copy(alpha = 0.9f),
                                 textAlign = TextAlign.Center

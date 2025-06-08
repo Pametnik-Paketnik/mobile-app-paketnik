@@ -31,7 +31,7 @@ class BoxRepository(private val context: Context) {
                         status = item.status,
                         tokenFormat = item.tokenFormat,
                         userId = item.user.id,
-                        username = item.user.username
+                        username = "${item.user.name} ${item.user.surname}"
                     )
                 }
                 Result.success(historyItems)
@@ -60,7 +60,7 @@ class BoxRepository(private val context: Context) {
                         status = item.status,
                         tokenFormat = item.tokenFormat,
                         userId = item.user.id,
-                        username = item.user.username
+                        username = "${item.user.name} ${item.user.surname}"
                     )
                 }
                 Result.success(historyItems)
@@ -157,7 +157,7 @@ class BoxRepository(private val context: Context) {
                         status = item.status,
                         tokenFormat = item.tokenFormat,
                         userId = item.user.id,
-                        username = item.user.username
+                        username = "${item.user.name} ${item.user.surname}"
                     )
                 }
                 

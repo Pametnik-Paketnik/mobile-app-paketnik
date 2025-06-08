@@ -13,11 +13,11 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
-    fun login(username: String, password: String) {
+    fun login(email: String, password: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
-            authRepository.login(username, password)
+            authRepository.login(email, password)
                 .onSuccess { message ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -33,7 +33,7 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
         }
     }
 
-    fun register(username: String, password: String, confirmPassword: String, userType: String) {
+    fun register(name: String, surname: String, email: String, password: String, confirmPassword: String, userType: String) {
         if (password != confirmPassword) {
             _uiState.value = _uiState.value.copy(
                 errorMessage = "Passwords do not match",
@@ -50,7 +50,7 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
             )
 
             try {
-                val response = authRepository.register(username, password, userType)
+                val response = authRepository.register(name, surname, email, password, userType)
                 if (response.success) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,

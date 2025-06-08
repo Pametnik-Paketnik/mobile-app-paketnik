@@ -21,7 +21,9 @@ fun RegisterForm(
     uiState: AuthUiState,
     airbnbColor: Color
 ) {
-    var username by remember { mutableStateOf("") }
+    var name by remember { mutableStateOf("") }
+    var surname by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var selectedUserType by remember { mutableStateOf("USER") }
@@ -31,11 +33,42 @@ fun RegisterForm(
     val textDark = Color(0xFF484848)
 
     OutlinedTextField(
-        value = username,
-        onValueChange = { username = it },
-        label = { Text("Username") },
+        value = name,
+        onValueChange = { name = it },
+        label = { Text("First Name") },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = airbnbColor,
+            focusedLabelColor = airbnbColor
+        )
+    )
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    OutlinedTextField(
+        value = surname,
+        onValueChange = { surname = it },
+        label = { Text("Last Name") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        shape = RoundedCornerShape(12.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = airbnbColor,
+            focusedLabelColor = airbnbColor
+        )
+    )
+
+    Spacer(modifier = Modifier.height(16.dp))
+
+    OutlinedTextField(
+        value = email,
+        onValueChange = { email = it },
+        label = { Text("Email") },
+        modifier = Modifier.fillMaxWidth(),
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = airbnbColor,
@@ -176,14 +209,14 @@ fun RegisterForm(
     Spacer(modifier = Modifier.height(32.dp))
 
     Button(
-        onClick = { authViewModel.register(username, password, confirmPassword, selectedUserType) },
+        onClick = { authViewModel.register(name, surname, email, password, confirmPassword, selectedUserType) },
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp),
         colors = ButtonDefaults.buttonColors(containerColor = airbnbColor),
         shape = RoundedCornerShape(16.dp),
-        enabled = !uiState.isLoading && username.isNotBlank() &&
-                password.isNotBlank() && confirmPassword.isNotBlank()
+        enabled = !uiState.isLoading && name.isNotBlank() && surname.isNotBlank() && 
+                email.isNotBlank() && password.isNotBlank() && confirmPassword.isNotBlank()
     ) {
         if (uiState.isLoading) {
             CircularProgressIndicator(

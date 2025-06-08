@@ -21,29 +21,34 @@ class AuthRepository(private val context: Context) {
 
     companion object {
         private val TOKEN_KEY = stringPreferencesKey("auth_token")
-        private val USERNAME_KEY = stringPreferencesKey("username")
+        private val NAME_KEY = stringPreferencesKey("name")
+        private val SURNAME_KEY = stringPreferencesKey("surname")
+        private val EMAIL_KEY = stringPreferencesKey("email")
         private val USER_ID_KEY = stringPreferencesKey("user_id")
         private val USER_TYPE_KEY = stringPreferencesKey("user_type")
         private val FACE_2FA_ENABLED_KEY = booleanPreferencesKey("face_2fa_enabled")
     }
 
-    suspend fun login(username: String, password: String): Result<String> {
+    suspend fun login(email: String, password: String): Result<String> {
         return try {
-            val response = authApi.login(LoginRequest(username, password))
+            val response = authApi.login(LoginRequest(email, password))
             if (response.isSuccessful && response.body() != null) {
                 val loginResponse = response.body()!!
                 if (loginResponse.success && loginResponse.access_token != null) {
                     // CRITICAL FIX: Save the REAL user ID from API response
                     saveAuthData(
                         token = loginResponse.access_token,
-                        username = loginResponse.user.username,
+                        name = loginResponse.user.name,
+                        surname = loginResponse.user.surname,
+                        email = loginResponse.user.email,
                         userId = loginResponse.user.id.toString(), // Use real ID: "3" not "user_john_doe_123"
                         userType = loginResponse.user.userType
                     )
 
                     // Debug: Print what we're saving
                     println("🔍 DEBUG - AuthRepository: Saving real user ID: ${loginResponse.user.id}")
-                    println("🔍 DEBUG - AuthRepository: Username: ${loginResponse.user.username}")
+                    println("🔍 DEBUG - AuthRepository: Name: ${loginResponse.user.name}")
+                    println("🔍 DEBUG - AuthRepository: Email: ${loginResponse.user.email}")
                     println("🔍 DEBUG - AuthRepository: UserType: ${loginResponse.user.userType}")
 
                     Result.success("Login successful")
@@ -66,10 +71,12 @@ class AuthRepository(private val context: Context) {
         }
     }
 
-    suspend fun register(username: String, password: String, userType: String): RegisterResponse {
+    suspend fun register(name: String, surname: String, email: String, password: String, userType: String): RegisterResponse {
         return try {
             val request = RegisterRequest(
-                username = username,
+                name = name,
+                surname = surname,
+                email = email,
                 password = password,
                 userType = userType
             )
@@ -80,7 +87,9 @@ class AuthRepository(private val context: Context) {
                     // Save authentication data
                     saveAuthData(
                         token = registerResponse.access_token,
-                        username = registerResponse.user.username,
+                        name = registerResponse.user.name,
+                        surname = registerResponse.user.surname,
+                        email = registerResponse.user.email,
                         userId = registerResponse.user.id.toString(),
                         userType = registerResponse.user.userType
                     )
@@ -99,7 +108,7 @@ class AuthRepository(private val context: Context) {
                     success = false,
                     message = errorMessage,
                     access_token = "",
-                    user = User(id = 0, username = "", userType = "")
+                    user = User(id = 0, name = "", surname = "", email = "", userType = "")
                 )
             }
         } catch (e: Exception) {
@@ -107,7 +116,7 @@ class AuthRepository(private val context: Context) {
                 success = false,
                 message = e.message ?: "Registration failed",
                 access_token = "",
-                user = User(id = 0, username = "", userType = "")
+                user = User(id = 0, name = "", surname = "", email = "", userType = "")
             )
         }
     }
@@ -163,19 +172,25 @@ class AuthRepository(private val context: Context) {
 
     private suspend fun saveAuthData(
         token: String,
-        username: String,
+        name: String,
+        surname: String,
+        email: String,
         userId: String,
         userType: String? = null
     ) {
         println("🔍 DEBUG - AuthRepository.saveAuthData(): Saving data...")
         println("🔍 DEBUG - Token: ${token.take(20)}...")
-        println("🔍 DEBUG - Username: $username")
+        println("🔍 DEBUG - Name: $name")
+        println("🔍 DEBUG - Surname: $surname")
+        println("🔍 DEBUG - Email: $email")
         println("🔍 DEBUG - UserId: $userId")
         println("🔍 DEBUG - UserType: $userType")
         
         context.dataStore.edit { preferences ->
             preferences[TOKEN_KEY] = token
-            preferences[USERNAME_KEY] = username
+            preferences[NAME_KEY] = name
+            preferences[SURNAME_KEY] = surname
+            preferences[EMAIL_KEY] = email
             preferences[USER_ID_KEY] = userId
             userType?.let { preferences[USER_TYPE_KEY] = it }
             
@@ -208,9 +223,28 @@ class AuthRepository(private val context: Context) {
         }
     }
 
+    fun getName(): Flow<String?> {
+        return context.dataStore.data.map { preferences ->
+            preferences[NAME_KEY]
+        }
+    }
+
+    fun getSurname(): Flow<String?> {
+        return context.dataStore.data.map { preferences ->
+            preferences[SURNAME_KEY]
+        }
+    }
+
+    fun getEmail(): Flow<String?> {
+        return context.dataStore.data.map { preferences ->
+            preferences[EMAIL_KEY]
+        }
+    }
+
+    // Keep this for backward compatibility but it will return email now
     fun getUsername(): Flow<String?> {
         return context.dataStore.data.map { preferences ->
-            preferences[USERNAME_KEY]
+            preferences[EMAIL_KEY] // Return email as username for compatibility
         }
     }
 
