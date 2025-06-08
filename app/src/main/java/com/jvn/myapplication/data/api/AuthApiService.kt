@@ -20,4 +20,23 @@ interface AuthApiService {
 
     @POST("api/auth/logout")
     suspend fun logout(@Header("Authorization") token: String): Response<LogoutResponse>
+
+    // Push notification endpoints for 2FA
+    @POST("api/auth/update-fcm-token")
+    suspend fun updateFcmToken(
+        @Header("Authorization") token: String,
+        @Body request: Map<String, String>
+    ): Response<Map<String, Any>>
+
+    @POST("api/auth/approve-pending-auth")
+    suspend fun approvePendingAuth(
+        @Header("Authorization") token: String,
+        @Body request: Map<String, String>
+    ): Response<Map<String, Any>>
+
+    @POST("api/auth/deny-pending-auth")
+    suspend fun denyPendingAuth(
+        @Header("Authorization") token: String,
+        @Body request: Map<String, String>
+    ): Response<Map<String, Any>>
 }

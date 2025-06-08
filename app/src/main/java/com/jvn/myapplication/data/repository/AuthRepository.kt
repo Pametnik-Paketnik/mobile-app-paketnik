@@ -232,4 +232,68 @@ class AuthRepository(private val context: Context) {
             preferences[FACE_2FA_ENABLED_KEY] ?: false
         }
     }
+
+    // Push notification methods for 2FA
+    suspend fun updateFcmToken(fcmToken: String) {
+        val token = getAuthToken().first()
+        if (!token.isNullOrEmpty()) {
+            try {
+                val response = authApi.updateFcmToken("Bearer $token", mapOf("fcm_token" to fcmToken))
+                if (response.isSuccessful) {
+                    println("🔍 DEBUG - AuthRepository: FCM token updated successfully")
+                } else {
+                    println("🔍 DEBUG - AuthRepository: FCM token update failed: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                println("🔍 DEBUG - AuthRepository: FCM token update exception: ${e.message}")
+                throw e
+            }
+        }
+    }
+
+    suspend fun approvePendingAuth(pendingAuthId: String) {
+        val token = getAuthToken().first()
+        if (!token.isNullOrEmpty()) {
+            try {
+                val response = authApi.approvePendingAuth(
+                    "Bearer $token",
+                    mapOf("pendingAuthId" to pendingAuthId)
+                )
+                if (response.isSuccessful) {
+                    println("🔍 DEBUG - AuthRepository: Login approved successfully")
+                } else {
+                    println("🔍 DEBUG - AuthRepository: Login approval failed: ${response.code()}")
+                    throw Exception("Failed to approve login")
+                }
+            } catch (e: Exception) {
+                println("🔍 DEBUG - AuthRepository: Login approval exception: ${e.message}")
+                throw e
+            }
+        } else {
+            throw Exception("Not authenticated")
+        }
+    }
+
+    suspend fun denyPendingAuth(pendingAuthId: String) {
+        val token = getAuthToken().first()
+        if (!token.isNullOrEmpty()) {
+            try {
+                val response = authApi.denyPendingAuth(
+                    "Bearer $token",
+                    mapOf("pendingAuthId" to pendingAuthId)
+                )
+                if (response.isSuccessful) {
+                    println("🔍 DEBUG - AuthRepository: Login denied successfully")
+                } else {
+                    println("🔍 DEBUG - AuthRepository: Login denial failed: ${response.code()}")
+                    throw Exception("Failed to deny login")
+                }
+            } catch (e: Exception) {
+                println("🔍 DEBUG - AuthRepository: Login denial exception: ${e.message}")
+                throw e
+            }
+        } else {
+            throw Exception("Not authenticated")
+        }
+    }
 }
