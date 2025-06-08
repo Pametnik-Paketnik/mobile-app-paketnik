@@ -145,7 +145,7 @@ class BoxRepository(private val context: Context) {
             val allHistoryResponse = boxApi.getAllOpeningHistory("Bearer $token")
             if (allHistoryResponse.isSuccessful && allHistoryResponse.body() != null) {
                 val allHistory = allHistoryResponse.body()!!
-                val hostBoxIds = hostBoxes.map { it.boxId }.toSet()
+                val hostBoxIds = hostBoxes.mapNotNull { it.boxId }.toSet()
                 
                 val filteredHistory = allHistory.filter { item ->
                     hostBoxIds.contains(item.boxId)
@@ -190,7 +190,7 @@ class BoxRepository(private val context: Context) {
                 val boxes = response.body()!!
                 println("🔍 DEBUG - BoxRepository: Got ${boxes.size} boxes for host")
                 boxes.forEach { box ->
-                    println("🔍 DEBUG - Box: ID=${box.id}, BoxId=${box.boxId}, Location=${box.location}, Status=${box.status}")
+                    println("🔍 DEBUG - Box: BoxId=${box.boxId}, Location=${box.location}, Status=${box.status}")
                 }
                 Result.success(boxes)
             } else {
@@ -202,6 +202,40 @@ class BoxRepository(private val context: Context) {
             }
         } catch (e: Exception) {
             println("🔍 DEBUG - BoxRepository: Exception in getBoxesByHost: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getAllBoxes(): Result<List<BoxData>> {
+        return try {
+            val token = authRepository.getAuthToken().first()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("No authentication token"))
+            }
+
+            println("🔍 DEBUG - BoxRepository: Getting all boxes")
+            
+            val response = boxApi.getAllBoxes("Bearer $token")
+            
+            println("🔍 DEBUG - BoxRepository: Response code: ${response.code()}")
+            println("🔍 DEBUG - BoxRepository: Response successful: ${response.isSuccessful}")
+            
+            if (response.isSuccessful && response.body() != null) {
+                val boxes = response.body()!!
+                println("🔍 DEBUG - BoxRepository: Got ${boxes.size} boxes")
+                boxes.forEach { box ->
+                    println("🔍 DEBUG - Box: BoxId=${box.boxId}, Location=${box.location}, Status=${box.status}")
+                }
+                Result.success(boxes)
+            } else {
+                val errorBody = response.errorBody()?.string()
+                val errorMessage = "Failed to fetch all boxes: ${response.message()}"
+                println("🔍 DEBUG - BoxRepository: $errorMessage")
+                println("🔍 DEBUG - Error body: $errorBody")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            println("🔍 DEBUG - BoxRepository: Exception in getAllBoxes: ${e.message}")
             Result.failure(e)
         }
     }

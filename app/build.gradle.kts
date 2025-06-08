@@ -98,4 +98,7 @@ dependencies {
     // Work Manager for background tasks
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 
+    // Coil for image loading
+    implementation("io.coil-kt:coil-compose:2.5.0")
+
 }

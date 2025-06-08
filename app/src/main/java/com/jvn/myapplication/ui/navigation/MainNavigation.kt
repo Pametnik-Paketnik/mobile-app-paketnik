@@ -12,8 +12,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.jvn.myapplication.ui.screens.BoxesHistoryScreen
+import com.jvn.myapplication.ui.screens.BoxesListScreen
 import com.jvn.myapplication.ui.screens.HomeScreen
 import com.jvn.myapplication.ui.screens.UserSettingsScreen
+import com.jvn.myapplication.data.repository.AuthRepository
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,6 +24,11 @@ fun MainNavigation(
     onLogout: () -> Unit = {}
 ) {
     val navController = rememberNavController()
+    val context = LocalContext.current
+    val authRepository = remember { AuthRepository(context) }
+    
+    // Get user type to determine which home screen to show
+    val userType by authRepository.getUserType().collectAsState(initial = null)
     
     // Airbnb-style color palette
     val lightGray = Color(0xFFF7F7F7)
@@ -65,7 +73,12 @@ fun MainNavigation(
                 modifier = Modifier.fillMaxSize()
             ) {
                 composable(BottomNavItem.Home.route) {
-                    HomeScreen()
+                    // Show different home screens based on user type
+                    when (userType) {
+                        "USER" -> BoxesListScreen()
+                        "HOST" -> HomeScreen() // Keep existing QR scanner for hosts
+                        else -> HomeScreen() // Default fallback
+                    }
                 }
                 
                 composable(BottomNavItem.BoxesHistory.route) {

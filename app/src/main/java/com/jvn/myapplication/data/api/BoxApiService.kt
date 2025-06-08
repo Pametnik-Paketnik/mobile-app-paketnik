@@ -31,4 +31,9 @@ interface BoxApiService {
         @Path("hostId") hostId: String,
         @Header("Authorization") token: String
     ): Response<List<BoxData>>
+
+    @GET("api/boxes")
+    suspend fun getAllBoxes(
+        @Header("Authorization") token: String
+    ): Response<List<BoxData>>
 }

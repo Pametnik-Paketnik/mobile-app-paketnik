@@ -275,19 +275,19 @@ private fun BoxCard(
             ) {
                 Column {
                     Text(
-                        text = "Box ${box.boxId}",
+                        text = "Box ${box.boxId ?: "Unknown"}",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                         color = textDark
                     )
                     Text(
-                        text = "ID: ${box.id}",
+                        text = "Owner: ${box.owner?.username ?: "Unknown"}",
                         style = MaterialTheme.typography.bodySmall,
                         color = textLight
                     )
                 }
                 
-                BoxStatusChip(status = box.status)
+                BoxStatusChip(status = "AVAILABLE")
             }
             
             Spacer(modifier = Modifier.height(16.dp))
@@ -296,13 +296,13 @@ private fun BoxCard(
             DetailRow(
                 icon = Icons.Default.LocationOn,
                 label = "Location",
-                value = box.location
+                value = box.location ?: "Unknown Location"
             )
             
             DetailRow(
-                icon = Icons.Default.Info,
-                label = "Status",
-                value = box.status
+                icon = Icons.Default.Star,
+                label = "Price",
+                value = "${box.pricePerNight ?: "0"} € / night"
             )
         }
     }
