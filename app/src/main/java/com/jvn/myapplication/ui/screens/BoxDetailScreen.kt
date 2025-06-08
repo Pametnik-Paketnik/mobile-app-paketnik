@@ -26,6 +26,7 @@ import coil.request.ImageRequest
 import com.jvn.myapplication.data.model.BoxData
 import com.jvn.myapplication.data.repository.BoxRepository
 import com.jvn.myapplication.data.repository.AuthRepository
+import com.jvn.myapplication.data.repository.ReservationRepository
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.time.LocalDate
@@ -53,12 +54,22 @@ fun BoxDetailScreen(
     // Repositories
     val boxRepository = remember { BoxRepository(context) }
     val authRepository = remember { AuthRepository(context) }
+    val reservationRepository = remember { ReservationRepository(context) }
     
     // State for date range and availability
     var selectedDateRange by remember { mutableStateOf<Pair<LocalDate?, LocalDate?>>(null to null) }
     var unavailableDates by remember { mutableStateOf<Set<LocalDate>>(emptySet()) }
     var showDateRangePicker by remember { mutableStateOf(false) }
     var isLoadingAvailability by remember { mutableStateOf(false) }
+    
+    // State for booking
+    var isBooking by remember { mutableStateOf(false) }
+    var bookingError by remember { mutableStateOf<String?>(null) }
+    var bookingSuccess by remember { mutableStateOf(false) }
+    
+    // State for current availability status
+    var isCurrentlyUnavailable by remember { mutableStateOf(false) }
+    var isCheckingCurrentAvailability by remember { mutableStateOf(false) }
     
     // Get current user ID for booking
     val currentUserId by authRepository.getUserId().collectAsState(initial = null)
@@ -81,24 +92,46 @@ fun BoxDetailScreen(
     LaunchedEffect(box.boxId) {
         if (box.boxId != null) {
             isLoadingAvailability = true
+            isCheckingCurrentAvailability = true
             scope.launch {
                 boxRepository.getBoxAvailability(box.boxId).fold(
                     onSuccess = { availability ->
-                        // Parse unavailable dates from ISO strings to LocalDate
-                        unavailableDates = availability.unavailableDates.mapNotNull { dateString ->
+                        // Parse unavailable date ranges and collect all dates within those ranges
+                        val allUnavailableDates = mutableSetOf<LocalDate>()
+                        val today = LocalDate.now()
+                        
+                        availability.unavailableDates.forEach { dateRange ->
                             try {
-                                LocalDate.parse(dateString.take(10)) // Take only date part from ISO string
+                                val startDate = LocalDate.parse(dateRange.startDate.take(10))
+                                val endDate = LocalDate.parse(dateRange.endDate.take(10))
+                                
+                                // Check if today falls within this range for current status
+                                if (!today.isBefore(startDate) && !today.isAfter(endDate)) {
+                                    isCurrentlyUnavailable = true
+                                }
+                                
+                                // Add all dates from startDate to endDate (inclusive)
+                                var currentDate = startDate
+                                while (!currentDate.isAfter(endDate)) {
+                                    allUnavailableDates.add(currentDate)
+                                    currentDate = currentDate.plusDays(1)
+                                }
                             } catch (e: Exception) {
-                                null
+                                println("🔍 DEBUG - BoxDetailScreen: Error parsing date range: ${e.message}")
                             }
-                        }.toSet()
+                        }
+                        
+                        unavailableDates = allUnavailableDates
+                        println("🔍 DEBUG - BoxDetailScreen: Loaded ${unavailableDates.size} unavailable dates")
                     },
-                    onFailure = {
-                        // Handle error - for now just continue with empty unavailable dates
+                    onFailure = { exception ->
+                        println("🔍 DEBUG - BoxDetailScreen: Error loading availability: ${exception.message}")
                         unavailableDates = emptySet()
+                        isCurrentlyUnavailable = false
                     }
                 )
                 isLoadingAvailability = false
+                isCheckingCurrentAvailability = false
             }
         }
     }
@@ -166,10 +199,18 @@ fun BoxDetailScreen(
                             
                             Surface(
                                 shape = RoundedCornerShape(20.dp),
-                                color = successGreen
+                                color = when {
+                                    isCheckingCurrentAvailability -> Color.Gray
+                                    isCurrentlyUnavailable -> airbnbRed
+                                    else -> successGreen
+                                }
                             ) {
                                 Text(
-                                    text = "AVAILABLE",
+                                    text = when {
+                                        isCheckingCurrentAvailability -> "CHECKING..."
+                                        isCurrentlyUnavailable -> "CURRENTLY UNAVAILABLE"
+                                        else -> "AVAILABLE"
+                                    },
                                     style = MaterialTheme.typography.labelMedium,
                                     color = Color.White,
                                     fontWeight = FontWeight.Bold,
@@ -251,7 +292,7 @@ fun BoxDetailScreen(
                     ) {
                         Text(
                             text = "Select Dates",
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = textDark
                         )
@@ -268,7 +309,12 @@ fun BoxDetailScreen(
                                 ""
                             },
                             onValueChange = { },
-                            label = { Text("Select dates") },
+                            label = { 
+                                Text(
+                                    "Select dates",
+                                    style = MaterialTheme.typography.bodySmall
+                                ) 
+                            },
                             readOnly = true,
                             trailingIcon = {
                                 IconButton(onClick = { showDateRangePicker = true }) {
@@ -276,7 +322,15 @@ fun BoxDetailScreen(
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Tap to select check-in and check-out dates") }
+                            placeholder = { 
+                                Text(
+                                    "Tap to select check-in and check-out dates",
+                                    style = MaterialTheme.typography.bodySmall
+                                ) 
+                            },
+                            textStyle = MaterialTheme.typography.bodyMedium,
+                            singleLine = false,
+                            maxLines = 2
                         )
                         
                         // Show availability loading
@@ -373,13 +427,56 @@ fun BoxDetailScreen(
                 ) {
                     Button(
                         onClick = {
-                            // TODO: Implement booking functionality with API call
                             if (selectedDateRange.first != null && selectedDateRange.second != null && 
                                 currentUserId != null && box.owner?.id != null && box.boxId != null) {
+                                
+                                // Clear any previous error/success states
+                                bookingError = null
+                                bookingSuccess = false
+                                isBooking = true
+                                
                                 scope.launch {
-                                    // Create reservation API call would go here
-                                    // val request = CreateReservationRequest(...)
-                                    // reservationRepository.createReservation(request)
+                                    try {
+                                        // Convert LocalDate to ISO string format for API
+                                        val checkinAt = selectedDateRange.first!!.atStartOfDay().toString() + "Z"
+                                        val checkoutAt = selectedDateRange.second!!.atStartOfDay().toString() + "Z"
+                                        
+                                        // Convert currentUserId to int
+                                        val guestId = currentUserId!!.toIntOrNull()
+                                        if (guestId == null) {
+                                            bookingError = "Invalid user ID"
+                                            isBooking = false
+                                            return@launch
+                                        }
+                                        
+                                        println("🔍 DEBUG - BoxDetailScreen: Starting booking...")
+                                        println("🔍 DEBUG - guestId: $guestId, hostId: ${box.owner.id}, boxId: ${box.boxId}")
+                                        println("🔍 DEBUG - checkinAt: $checkinAt, checkoutAt: $checkoutAt")
+                                        
+                                        reservationRepository.createReservation(
+                                            guestId = guestId,
+                                            hostId = box.owner.id,
+                                            boxId = box.boxId,
+                                            checkinAt = checkinAt,
+                                            checkoutAt = checkoutAt
+                                        ).fold(
+                                            onSuccess = { reservationResponse ->
+                                                println("🔍 DEBUG - BoxDetailScreen: Booking successful!")
+                                                println("🔍 DEBUG - Reservation ID: ${reservationResponse.id}")
+                                                bookingSuccess = true
+                                                isBooking = false
+                                            },
+                                            onFailure = { exception ->
+                                                println("🔍 DEBUG - BoxDetailScreen: Booking failed: ${exception.message}")
+                                                bookingError = exception.message ?: "Booking failed"
+                                                isBooking = false
+                                            }
+                                        )
+                                    } catch (e: Exception) {
+                                        println("🔍 DEBUG - BoxDetailScreen: Exception during booking: ${e.message}")
+                                        bookingError = e.message ?: "An unexpected error occurred"
+                                        isBooking = false
+                                    }
                                 }
                             }
                         },
@@ -389,13 +486,120 @@ fun BoxDetailScreen(
                             .height(56.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = airbnbRed),
                         shape = RoundedCornerShape(12.dp),
-                        enabled = selectedDateRange.first != null && selectedDateRange.second != null && totalPrice > 0
+                        enabled = selectedDateRange.first != null && selectedDateRange.second != null && totalPrice > 0 && !isBooking
                     ) {
-                        Text(
-                            text = if (totalPrice > 0) "Book for €${String.format("%.2f", totalPrice)}" else "Select dates to book",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        if (isBooking) {
+                            Row(
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Booking...",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = if (totalPrice > 0) "Book for €${String.format("%.2f", totalPrice)}" else "Select dates to book",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            }
+            
+            // Success/Error Messages
+            if (bookingSuccess) {
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = successGreen.copy(alpha = 0.1f))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CheckCircle,
+                                contentDescription = null,
+                                tint = successGreen,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Booking Successful!",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = successGreen
+                                )
+                                Text(
+                                    text = "Your reservation has been created. Check your reservations tab for details.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = textDark
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if (bookingError != null) {
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = airbnbRed.copy(alpha = 0.1f))
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = airbnbRed,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "Booking Failed",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = airbnbRed
+                                )
+                                Text(
+                                    text = bookingError!!,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = textDark
+                                )
+                            }
+                            IconButton(onClick = { bookingError = null }) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = "Dismiss",
+                                    tint = airbnbRed
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -552,11 +756,29 @@ fun DateRangePickerDialog(
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
+            val startMillis = dateRangePickerState.selectedStartDateMillis
+            val endMillis = dateRangePickerState.selectedEndDateMillis
+            
+            // Check if selection is valid (not in past and not unavailable)
+            val isValidSelection = if (startMillis != null && endMillis != null) {
+                val startDate = LocalDate.ofEpochDay(startMillis / (24 * 60 * 60 * 1000L))
+                val endDate = LocalDate.ofEpochDay(endMillis / (24 * 60 * 60 * 1000L))
+                val today = LocalDate.now()
+                
+                // Check if dates are not in past and not unavailable
+                var current = startDate
+                var isValid = true
+                while (!current.isAfter(endDate) && isValid) {
+                    if (current.isBefore(today) || unavailableDates.contains(current)) {
+                        isValid = false
+                    }
+                    current = current.plusDays(1)
+                }
+                isValid
+            } else false
+            
             TextButton(
                 onClick = {
-                    val startMillis = dateRangePickerState.selectedStartDateMillis
-                    val endMillis = dateRangePickerState.selectedEndDateMillis
-                    
                     val startDate = startMillis?.let { 
                         LocalDate.ofEpochDay(it / (24 * 60 * 60 * 1000L))
                     }
@@ -564,11 +786,12 @@ fun DateRangePickerDialog(
                         LocalDate.ofEpochDay(it / (24 * 60 * 60 * 1000L))
                     }
                     
-                    // Always allow confirmation if dates are selected, let user decide about unavailable dates
-                    if (startDate != null || endDate != null) {
+                    // Only confirm if selection is valid
+                    if (isValidSelection && (startDate != null || endDate != null)) {
                         onDateRangeSelected(startDate, endDate)
                     }
-                }
+                },
+                enabled = (startMillis != null || endMillis != null) && isValidSelection
             ) {
                 Text("Confirm")
             }
@@ -584,42 +807,14 @@ fun DateRangePickerDialog(
             ) {
                 DateRangePicker(
                     state = dateRangePickerState,
-                    modifier = Modifier.height(400.dp) // Fixed height instead of weight
+                    modifier = Modifier.height(400.dp),
+                    headline = {
+                        // Custom headline without "Start date" and "End date" text
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 )
                 
-                // Show warning if unavailable dates exist in selection
-                val startMillis = dateRangePickerState.selectedStartDateMillis
-                val endMillis = dateRangePickerState.selectedEndDateMillis
-                
-                if (startMillis != null && endMillis != null) {
-                    val startDate = LocalDate.ofEpochDay(startMillis / (24 * 60 * 60 * 1000L))
-                    val endDate = LocalDate.ofEpochDay(endMillis / (24 * 60 * 60 * 1000L))
-                    
-                    var current: LocalDate = startDate
-                    var hasUnavailableDate = false
-                    while (!current.isAfter(endDate)) {
-                        if (unavailableDates.contains(current)) {
-                            hasUnavailableDate = true
-                            break
-                        }
-                        current = current.plusDays(1)
-                    }
-                    
-                    if (hasUnavailableDate) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = Color.Red.copy(alpha = 0.1f))
-                        ) {
-                            Text(
-                                text = "⚠️ Warning: Selected range contains unavailable dates. Booking may not be possible for those dates.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.Red,
-                                modifier = Modifier.padding(8.dp)
-                            )
-                        }
-                    }
-                }
+
             }
         },
         title = {

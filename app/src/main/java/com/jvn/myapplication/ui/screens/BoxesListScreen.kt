@@ -30,6 +30,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jvn.myapplication.data.model.BoxData
 import com.jvn.myapplication.data.repository.AuthRepository
 import com.jvn.myapplication.data.repository.BoxRepository
+import java.time.LocalDate
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -359,6 +360,46 @@ fun BoxCard(
     val textDark = Color(0xFF484848)
     val textLight = Color(0xFF767676)
     val successGreen = Color(0xFF00A699)
+    
+    val context = LocalContext.current
+    val boxRepository = remember { BoxRepository(context) }
+    val scope = rememberCoroutineScope()
+    
+    // State for availability checking
+    var isCurrentlyUnavailable by remember { mutableStateOf(false) }
+    var isCheckingAvailability by remember { mutableStateOf(false) }
+    
+    // Check if box is currently unavailable (today's date falls within unavailable ranges)
+    LaunchedEffect(box.boxId) {
+        if (box.boxId != null) {
+            isCheckingAvailability = true
+            scope.launch {
+                boxRepository.getBoxAvailability(box.boxId).fold(
+                    onSuccess = { availability ->
+                        val today = LocalDate.now()
+                        
+                        // Check if today falls within any unavailable date range
+                        isCurrentlyUnavailable = availability.unavailableDates.any { dateRange ->
+                            try {
+                                val startDate = LocalDate.parse(dateRange.startDate.take(10))
+                                val endDate = LocalDate.parse(dateRange.endDate.take(10))
+                                
+                                // Check if today is within this range (inclusive)
+                                !today.isBefore(startDate) && !today.isAfter(endDate)
+                            } catch (e: Exception) {
+                                false // If parsing fails, assume available
+                            }
+                        }
+                    },
+                    onFailure = {
+                        // If API fails, assume available
+                        isCurrentlyUnavailable = false
+                    }
+                )
+                isCheckingAvailability = false
+            }
+        }
+    }
 
     Card(
         modifier = Modifier
@@ -534,14 +575,22 @@ fun BoxCard(
                         )
                     }
                     
-                    // Status badge - showing available since API doesn't return status
+                    // Status badge - dynamic based on current availability
                     Surface(
                         shape = RoundedCornerShape(20.dp),
-                        color = successGreen,
+                        color = when {
+                            isCheckingAvailability -> Color.Gray
+                            isCurrentlyUnavailable -> airbnbRed
+                            else -> successGreen
+                        },
                         modifier = Modifier.padding(start = 8.dp)
                     ) {
                         Text(
-                            text = "AVAILABLE",
+                            text = when {
+                                isCheckingAvailability -> "CHECKING..."
+                                isCurrentlyUnavailable -> "CURRENTLY UNAVAILABLE"
+                                else -> "AVAILABLE"
+                            },
                             style = MaterialTheme.typography.labelMedium,
                             color = Color.White,
                             fontWeight = FontWeight.Bold,

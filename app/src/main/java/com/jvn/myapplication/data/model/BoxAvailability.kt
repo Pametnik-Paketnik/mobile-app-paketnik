@@ -4,7 +4,13 @@ import com.google.gson.annotations.SerializedName
 
 data class BoxAvailabilityResponse(
     val boxId: String,
-    val unavailableDates: List<String> // Array of date strings in ISO format
+    val unavailableDates: List<UnavailableDateRange>
+)
+
+data class UnavailableDateRange(
+    val startDate: String, // ISO date string
+    val endDate: String,   // ISO date string
+    val status: String     // e.g., "BOOKED", "MAINTENANCE", etc.
 )
 
 data class DateRange(
