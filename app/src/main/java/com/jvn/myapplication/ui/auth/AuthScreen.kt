@@ -1,11 +1,17 @@
 package com.jvn.myapplication.ui.auth
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -23,46 +29,63 @@ fun AuthScreen(
         }
     }
 
-    val teal = Color(0xFF008C9E)
+    // Airbnb-style color palette
+    val airbnbRed = Color(0xFFFF5A5F)
+    val lightGray = Color(0xFFF7F7F7)
+    val cardWhite = Color(0xFFFFFFFF)
+    val textDark = Color(0xFF484848)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .background(lightGray)
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        Spacer(modifier = Modifier.height(32.dp)) // Top padding to center content when possible
         Card(
-            modifier = Modifier.fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .shadow(8.dp, RoundedCornerShape(24.dp)),
+            colors = CardDefaults.cardColors(containerColor = cardWhite),
+            shape = RoundedCornerShape(24.dp)
         ) {
             Column(
-                modifier = Modifier.padding(24.dp),
+                modifier = Modifier.padding(32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = if (isLoginMode) "Login" else "Register",
+                    text = if (isLoginMode) "Welcome Back" else "Create Account",
                     style = MaterialTheme.typography.headlineMedium,
-                    color = teal
+                    fontWeight = FontWeight.Bold,
+                    color = textDark
                 )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Text(
+                    text = if (isLoginMode) "Sign in to your account" else "Join Air-Box today",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = textDark.copy(alpha = 0.7f)
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
 
                 if (isLoginMode) {
                     LoginForm(
                         authViewModel = authViewModel,
                         uiState = uiState,
-                        tealColor = teal
+                        airbnbColor = airbnbRed
                     )
                 } else {
                     RegisterForm(
                         authViewModel = authViewModel,
                         uiState = uiState,
-                        tealColor = teal
+                        airbnbColor = airbnbRed
                     )
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(24.dp))
 
                 TextButton(
                     onClick = {
@@ -72,10 +95,14 @@ fun AuthScreen(
                 ) {
                     Text(
                         if (isLoginMode) "Don't have an account? Register" else "Already have an account? Login",
-                        color = teal
+                        color = airbnbRed,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium
                     )
                 }
             }
         }
+        
+        Spacer(modifier = Modifier.height(32.dp)) // Bottom padding to ensure content is accessible
     }
 }

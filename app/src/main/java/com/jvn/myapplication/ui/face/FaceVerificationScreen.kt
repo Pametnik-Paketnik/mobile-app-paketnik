@@ -182,7 +182,7 @@ private fun InstructionsContent(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Text(
-                    text = "For security purposes, please record a 3-second video of your face.",
+                    text = "For security purposes, please record a 10-second video of your face.",
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center
                 )

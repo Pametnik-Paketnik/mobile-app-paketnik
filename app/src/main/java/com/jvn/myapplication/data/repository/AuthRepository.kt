@@ -1,6 +1,7 @@
 package com.jvn.myapplication.data.repository
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.gson.Gson
@@ -23,6 +24,7 @@ class AuthRepository(private val context: Context) {
         private val USERNAME_KEY = stringPreferencesKey("username")
         private val USER_ID_KEY = stringPreferencesKey("user_id")
         private val USER_TYPE_KEY = stringPreferencesKey("user_type")
+        private val FACE_2FA_ENABLED_KEY = booleanPreferencesKey("face_2fa_enabled")
     }
 
     suspend fun login(username: String, password: String): Result<String> {
@@ -165,12 +167,24 @@ class AuthRepository(private val context: Context) {
         userId: String,
         userType: String? = null
     ) {
+        println("🔍 DEBUG - AuthRepository.saveAuthData(): Saving data...")
+        println("🔍 DEBUG - Token: ${token.take(20)}...")
+        println("🔍 DEBUG - Username: $username")
+        println("🔍 DEBUG - UserId: $userId")
+        println("🔍 DEBUG - UserType: $userType")
+        
         context.dataStore.edit { preferences ->
             preferences[TOKEN_KEY] = token
             preferences[USERNAME_KEY] = username
             preferences[USER_ID_KEY] = userId
             userType?.let { preferences[USER_TYPE_KEY] = it }
+            
+            println("🔍 DEBUG - AuthRepository.saveAuthData(): Saved ${preferences.asMap().size} entries to DataStore")
         }
+        
+        // Verify what was saved
+        val savedUserId = getUserId().first()
+        println("🔍 DEBUG - AuthRepository.saveAuthData(): Verification - retrieved user ID: '$savedUserId'")
     }
 
     private fun generateUserId(username: String): String {
@@ -186,7 +200,11 @@ class AuthRepository(private val context: Context) {
 
     fun getUserId(): Flow<String?> {
         return context.dataStore.data.map { preferences ->
-            preferences[USER_ID_KEY]
+            val userId = preferences[USER_ID_KEY]
+            println("🔍 DEBUG - AuthRepository.getUserId(): Retrieved user ID: '$userId'")
+            println("🔍 DEBUG - AuthRepository.getUserId(): DataStore contains ${preferences.asMap().size} entries")
+            println("🔍 DEBUG - AuthRepository.getUserId(): All keys: ${preferences.asMap().keys}")
+            userId
         }
     }
 
@@ -199,6 +217,83 @@ class AuthRepository(private val context: Context) {
     fun getUserType(): Flow<String?> {
         return context.dataStore.data.map { preferences ->
             preferences[USER_TYPE_KEY]
+        }
+    }
+
+    // Face 2FA state management
+    suspend fun setFace2FAEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[FACE_2FA_ENABLED_KEY] = enabled
+        }
+    }
+
+    fun isFace2FAEnabled(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[FACE_2FA_ENABLED_KEY] ?: false
+        }
+    }
+
+    // Push notification methods for 2FA
+    suspend fun updateFcmToken(fcmToken: String) {
+        val token = getAuthToken().first()
+        if (!token.isNullOrEmpty()) {
+            try {
+                val response = authApi.updateFcmToken("Bearer $token", mapOf("fcm_token" to fcmToken))
+                if (response.isSuccessful) {
+                    println("🔍 DEBUG - AuthRepository: FCM token updated successfully")
+                } else {
+                    println("🔍 DEBUG - AuthRepository: FCM token update failed: ${response.code()}")
+                }
+            } catch (e: Exception) {
+                println("🔍 DEBUG - AuthRepository: FCM token update exception: ${e.message}")
+                throw e
+            }
+        }
+    }
+
+    suspend fun approvePendingAuth(pendingAuthId: String) {
+        val token = getAuthToken().first()
+        if (!token.isNullOrEmpty()) {
+            try {
+                val response = authApi.approvePendingAuth(
+                    "Bearer $token",
+                    mapOf("pendingAuthId" to pendingAuthId)
+                )
+                if (response.isSuccessful) {
+                    println("🔍 DEBUG - AuthRepository: Login approved successfully")
+                } else {
+                    println("🔍 DEBUG - AuthRepository: Login approval failed: ${response.code()}")
+                    throw Exception("Failed to approve login")
+                }
+            } catch (e: Exception) {
+                println("🔍 DEBUG - AuthRepository: Login approval exception: ${e.message}")
+                throw e
+            }
+        } else {
+            throw Exception("Not authenticated")
+        }
+    }
+
+    suspend fun denyPendingAuth(pendingAuthId: String) {
+        val token = getAuthToken().first()
+        if (!token.isNullOrEmpty()) {
+            try {
+                val response = authApi.denyPendingAuth(
+                    "Bearer $token",
+                    mapOf("pendingAuthId" to pendingAuthId)
+                )
+                if (response.isSuccessful) {
+                    println("🔍 DEBUG - AuthRepository: Login denied successfully")
+                } else {
+                    println("🔍 DEBUG - AuthRepository: Login denial failed: ${response.code()}")
+                    throw Exception("Failed to deny login")
+                }
+            } catch (e: Exception) {
+                println("🔍 DEBUG - AuthRepository: Login denial exception: ${e.message}")
+                throw e
+            }
+        } else {
+            throw Exception("Not authenticated")
         }
     }
 }

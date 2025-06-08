@@ -10,7 +10,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class UnlockHistoryViewModel(private val boxRepository: BoxRepository) : ViewModel() {
+class UnlockHistoryViewModel(
+    private val boxRepository: BoxRepository,
+    private val hostId: Int? = null
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UnlockHistoryUiState())
     val uiState: StateFlow<UnlockHistoryUiState> = _uiState.asStateFlow()
@@ -23,20 +26,39 @@ class UnlockHistoryViewModel(private val boxRepository: BoxRepository) : ViewMod
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
-            boxRepository.getAllUnlockHistory()
-                .onSuccess { history ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        unlockHistory = history,
-                        errorMessage = null
-                    )
-                }
-                .onFailure { exception ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        errorMessage = exception.message ?: "Failed to load unlock history"
-                    )
-                }
+            if (hostId != null) {
+                // Load unlock history for host's boxes only
+                boxRepository.getUnlockHistoryByHost(hostId)
+                    .onSuccess { history ->
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            unlockHistory = history,
+                            errorMessage = null
+                        )
+                    }
+                    .onFailure { exception ->
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            errorMessage = exception.message ?: "Failed to load unlock history for your boxes"
+                        )
+                    }
+            } else {
+                // Load all unlock history (admin view)
+                boxRepository.getAllUnlockHistory()
+                    .onSuccess { history ->
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            unlockHistory = history,
+                            errorMessage = null
+                        )
+                    }
+                    .onFailure { exception ->
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            errorMessage = exception.message ?: "Failed to load unlock history"
+                        )
+                    }
+            }
         }
     }
 

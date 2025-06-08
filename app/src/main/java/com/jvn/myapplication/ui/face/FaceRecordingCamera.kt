@@ -70,9 +70,9 @@ fun FaceRecordingCamera(
                         }
                     }
 
-                // Auto-stop recording after 3 seconds
+                // Auto-stop recording after 10 seconds
                 kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
-                    delay(3000)
+                    delay(10000)
                     recording?.stop()
                     onRecordingStateChanged(false)
                 }

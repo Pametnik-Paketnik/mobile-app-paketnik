@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -85,5 +86,16 @@ dependencies {
 
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
 
+    // Navigation Compose for bottom tabs
+    implementation("androidx.navigation:navigation-compose:2.7.6")
+    implementation("androidx.navigation:navigation-runtime-ktx:2.7.6")
+
+    // Firebase and Push Notifications
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation("com.google.firebase:firebase-messaging-ktx")
+    implementation("com.google.firebase:firebase-analytics-ktx")
+    
+    // Work Manager for background tasks
+    implementation("androidx.work:work-runtime-ktx:2.9.0")
 
 }

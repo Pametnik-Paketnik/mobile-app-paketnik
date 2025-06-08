@@ -15,7 +15,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -28,18 +27,21 @@ import com.jvn.myapplication.data.repository.BoxRepository
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UnlockHistoryScreen(
+    hostId: Int? = null,
     onBack: () -> Unit
 ) {
-    val teal = Color(0xFF008C9E)
-    val tealLight = Color(0xFF4DB6AC)
-    val lightGray = Color(0xFFF5F5F5)
-    val darkGray = Color(0xFF424242)
+    // Airbnb-style color palette
+    val airbnbRed = Color(0xFFFF5A5F)
+    val lightGray = Color(0xFFF7F7F7)
+    val cardWhite = Color(0xFFFFFFFF)
+    val textDark = Color(0xFF484848)
+    val textLight = Color(0xFF767676)
 
     val context = LocalContext.current
     val boxRepository = remember { BoxRepository(context) }
 
     val viewModel: UnlockHistoryViewModel = viewModel {
-        UnlockHistoryViewModel(boxRepository)
+        UnlockHistoryViewModel(boxRepository, hostId)
     }
 
     val uiState by viewModel.uiState.collectAsState()
@@ -49,7 +51,7 @@ fun UnlockHistoryScreen(
             .fillMaxSize()
             .background(lightGray)
     ) {
-        // Enhanced Top App Bar
+        // Enhanced Top App Bar with Airbnb styling
         TopAppBar(
             title = {
                 Text(
@@ -77,28 +79,24 @@ fun UnlockHistoryScreen(
                 }
             },
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = teal,
+                containerColor = airbnbRed,
                 titleContentColor = Color.White
             )
         )
 
-        // Statistics Card
+        // Statistics Card with Airbnb styling
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            shape = RoundedCornerShape(16.dp)
+            colors = CardDefaults.cardColors(containerColor = cardWhite),
+            elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+            shape = RoundedCornerShape(20.dp)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(teal, tealLight)
-                        )
-                    )
+                    .background(airbnbRed)
                     .padding(20.dp)
             ) {
                 if (!uiState.isLoading) {
@@ -143,7 +141,7 @@ fun UnlockHistoryScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         CircularProgressIndicator(
-                            color = teal,
+                            color = airbnbRed,
                             modifier = Modifier.size(48.dp),
                             strokeWidth = 4.dp
                         )
@@ -151,7 +149,7 @@ fun UnlockHistoryScreen(
                         Text(
                             "Loading unlock history...",
                             style = MaterialTheme.typography.bodyLarge,
-                            color = darkGray
+                            color = textLight
                         )
                     }
                 }
@@ -165,9 +163,9 @@ fun UnlockHistoryScreen(
                     Card(
                         modifier = Modifier.padding(16.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = Color.Red.copy(alpha = 0.1f)
+                            containerColor = airbnbRed.copy(alpha = 0.1f)
                         ),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(20.dp)
                     ) {
                         Column(
                             modifier = Modifier.padding(24.dp),
@@ -176,7 +174,7 @@ fun UnlockHistoryScreen(
                             Icon(
                                 imageVector = Icons.Default.Warning,
                                 contentDescription = "Error",
-                                tint = Color.Red,
+                                tint = airbnbRed,
                                 modifier = Modifier.size(48.dp)
                             )
                             Spacer(modifier = Modifier.height(16.dp))
@@ -184,14 +182,14 @@ fun UnlockHistoryScreen(
                                 "Error loading data",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.Red
+                                color = airbnbRed
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
                                 uiState.errorMessage!!,
                                 style = MaterialTheme.typography.bodyMedium,
                                 textAlign = TextAlign.Center,
-                                color = darkGray
+                                color = textDark
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
@@ -199,7 +197,7 @@ fun UnlockHistoryScreen(
                                     viewModel.clearError()
                                     viewModel.loadUnlockHistory()
                                 },
-                                colors = ButtonDefaults.buttonColors(containerColor = teal)
+                                colors = ButtonDefaults.buttonColors(containerColor = airbnbRed)
                             ) {
                                 Text("Retry")
                             }
@@ -215,9 +213,9 @@ fun UnlockHistoryScreen(
                 ) {
                     Card(
                         modifier = Modifier.padding(16.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        colors = CardDefaults.cardColors(containerColor = cardWhite),
+                        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+                        shape = RoundedCornerShape(20.dp)
                     ) {
                         Column(
                             modifier = Modifier.padding(24.dp),
@@ -232,14 +230,17 @@ fun UnlockHistoryScreen(
                                 "No unlock history found",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = darkGray
+                                color = textDark
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "Box access attempts will appear here",
+                                if (hostId != null) 
+                                    "Box access attempts for your boxes will appear here"
+                                else 
+                                    "Box access attempts will appear here",
                                 style = MaterialTheme.typography.bodyMedium,
                                 textAlign = TextAlign.Center,
-                                color = darkGray.copy(alpha = 0.7f)
+                                color = textLight
                             )
                         }
                     }
@@ -255,7 +256,10 @@ fun UnlockHistoryScreen(
                     items(uiState.unlockHistory) { item ->
                         UnlockHistoryCard(
                             item = item,
-                            tealColor = teal
+                            airbnbRed = airbnbRed,
+                            cardWhite = cardWhite,
+                            textDark = textDark,
+                            textLight = textLight
                         )
                     }
                 }
@@ -297,30 +301,33 @@ private fun StatisticItem(
 @Composable
 private fun UnlockHistoryCard(
     item: UnlockHistoryWithUser,
-    tealColor: Color
+    airbnbRed: Color,
+    cardWhite: Color,
+    textDark: Color,
+    textLight: Color
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp),
-        shape = RoundedCornerShape(12.dp)
+        colors = CardDefaults.cardColors(containerColor = cardWhite),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        shape = RoundedCornerShape(20.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
+                .padding(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Status Icon
+            // Status Icon with Airbnb styling
             Card(
                 colors = CardDefaults.cardColors(
                     containerColor = if (item.status == "success")
-                        Color.Green.copy(alpha = 0.1f)
+                        Color(0xFF4CAF50).copy(alpha = 0.1f)
                     else
-                        Color.Red.copy(alpha = 0.1f)
+                        airbnbRed.copy(alpha = 0.1f)
                 ),
-                shape = RoundedCornerShape(8.dp),
-                modifier = Modifier.size(48.dp)
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.size(56.dp)
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -332,13 +339,13 @@ private fun UnlockHistoryCard(
                         else
                             Icons.Default.Warning,
                         contentDescription = item.status,
-                        tint = if (item.status == "success") Color.Green else Color.Red,
-                        modifier = Modifier.size(24.dp)
+                        tint = if (item.status == "success") Color(0xFF4CAF50) else airbnbRed,
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(20.dp))
 
             // Content
             Column(
@@ -351,30 +358,30 @@ private fun UnlockHistoryCard(
                 ) {
                     Text(
                         "Box ${item.boxId}",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = tealColor
+                        color = textDark
                     )
                     Card(
                         colors = CardDefaults.cardColors(
                             containerColor = if (item.status == "success")
-                                Color.Green.copy(alpha = 0.1f)
+                                Color(0xFF4CAF50).copy(alpha = 0.1f)
                             else
-                                Color.Red.copy(alpha = 0.1f)
+                                airbnbRed.copy(alpha = 0.1f)
                         ),
-                        shape = RoundedCornerShape(6.dp)
+                        shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
                             item.status.uppercase(),
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (item.status == "success") Color.Green else Color.Red,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (item.status == "success") Color(0xFF4CAF50) else airbnbRed,
                             fontWeight = FontWeight.Bold
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -383,21 +390,22 @@ private fun UnlockHistoryCard(
                     Text(
                         "User: ${item.username ?: "Unknown"}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
+                        color = textLight,
+                        fontWeight = FontWeight.Medium
                     )
                     Text(
                         "Format: ${item.tokenFormat}",
                         style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
+                        color = textLight
                     )
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 Text(
                     item.timestamp,
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color.Gray
+                    color = textLight
                 )
             }
         }

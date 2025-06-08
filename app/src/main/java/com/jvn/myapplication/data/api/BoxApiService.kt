@@ -2,6 +2,7 @@
 package com.jvn.myapplication.data.api
 
 import com.jvn.myapplication.data.model.UnlockHistory
+import com.jvn.myapplication.data.model.BoxData
 import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Header
@@ -24,4 +25,10 @@ interface BoxApiService {
         @Path("userId") userId: String,
         @Header("Authorization") token: String
     ): Response<List<UnlockHistory>>
+
+    @GET("api/boxes/host/{hostId}")
+    suspend fun getBoxesByHost(
+        @Path("hostId") hostId: String,
+        @Header("Authorization") token: String
+    ): Response<List<BoxData>>
 }

@@ -5,6 +5,7 @@ import android.content.Context
 import com.jvn.myapplication.data.api.NetworkModule
 import com.jvn.myapplication.data.model.UnlockHistory
 import com.jvn.myapplication.data.model.UnlockHistoryWithUser
+import com.jvn.myapplication.data.model.BoxData
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.*
@@ -114,6 +115,93 @@ class BoxRepository(private val context: Context) {
         } catch (e: Exception) {
             println("🔍 DEBUG - BoxRepository: Exception occurred: ${e.message}")
             e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getUnlockHistoryByHost(hostId: Int): Result<List<UnlockHistoryWithUser>> {
+        return try {
+            val token = authRepository.getAuthToken().first()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("No authentication token"))
+            }
+
+            println("🔍 DEBUG - BoxRepository: Getting unlock history for host $hostId")
+            
+            // First, get all boxes owned by this host
+            val boxesResponse = boxApi.getBoxesByHost(hostId.toString(), "Bearer $token")
+            if (!boxesResponse.isSuccessful || boxesResponse.body() == null) {
+                return Result.failure(Exception("Failed to fetch host's boxes: ${boxesResponse.message()}"))
+            }
+            
+            val hostBoxes = boxesResponse.body()!!
+            println("🔍 DEBUG - BoxRepository: Host has ${hostBoxes.size} boxes")
+            
+            if (hostBoxes.isEmpty()) {
+                return Result.success(emptyList())
+            }
+            
+            // Get unlock history for all boxes and filter by host's boxes
+            val allHistoryResponse = boxApi.getAllOpeningHistory("Bearer $token")
+            if (allHistoryResponse.isSuccessful && allHistoryResponse.body() != null) {
+                val allHistory = allHistoryResponse.body()!!
+                val hostBoxIds = hostBoxes.map { it.boxId }.toSet()
+                
+                val filteredHistory = allHistory.filter { item ->
+                    hostBoxIds.contains(item.boxId)
+                }.map { item: UnlockHistory ->
+                    UnlockHistoryWithUser(
+                        id = 0,
+                        boxId = item.boxId,
+                        timestamp = formatTimestamp(item.timestamp),
+                        status = item.status,
+                        tokenFormat = item.tokenFormat,
+                        userId = item.user.id,
+                        username = item.user.username
+                    )
+                }
+                
+                println("🔍 DEBUG - BoxRepository: Returning ${filteredHistory.size} unlock history items for host")
+                Result.success(filteredHistory)
+            } else {
+                Result.failure(Exception("Failed to fetch unlock history: ${allHistoryResponse.message()}"))
+            }
+        } catch (e: Exception) {
+            println("🔍 DEBUG - BoxRepository: Exception in getUnlockHistoryByHost: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getBoxesByHost(hostId: Int): Result<List<BoxData>> {
+        return try {
+            val token = authRepository.getAuthToken().first()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("No authentication token"))
+            }
+
+            println("🔍 DEBUG - BoxRepository: Getting boxes for host $hostId")
+            
+            val response = boxApi.getBoxesByHost(hostId.toString(), "Bearer $token")
+            
+            println("🔍 DEBUG - BoxRepository: Response code: ${response.code()}")
+            println("🔍 DEBUG - BoxRepository: Response successful: ${response.isSuccessful}")
+            
+            if (response.isSuccessful && response.body() != null) {
+                val boxes = response.body()!!
+                println("🔍 DEBUG - BoxRepository: Got ${boxes.size} boxes for host")
+                boxes.forEach { box ->
+                    println("🔍 DEBUG - Box: ID=${box.id}, BoxId=${box.boxId}, Location=${box.location}, Status=${box.status}")
+                }
+                Result.success(boxes)
+            } else {
+                val errorBody = response.errorBody()?.string()
+                val errorMessage = "Failed to fetch host's boxes: ${response.message()}"
+                println("🔍 DEBUG - BoxRepository: $errorMessage")
+                println("🔍 DEBUG - Error body: $errorBody")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            println("🔍 DEBUG - BoxRepository: Exception in getBoxesByHost: ${e.message}")
             Result.failure(e)
         }
     }
