@@ -95,4 +95,61 @@ class ExtraOrderRepository(private val context: Context) {
             Result.failure(e)
         }
     }
+
+    suspend fun getExtraOrdersByReservation(reservationId: Int): Result<List<ExtraOrder>> {
+        return try {
+            println("🔍 DEBUG - ExtraOrderRepository: Getting extra orders for reservation $reservationId")
+            
+            val token = authRepository.getAuthToken().first()
+            if (token.isNullOrEmpty()) {
+                println("🔍 DEBUG - ExtraOrderRepository: ERROR - No authentication token")
+                return Result.failure(Exception("No authentication token"))
+            }
+
+            val response = extraOrderApi.getExtraOrdersByReservation(reservationId, "Bearer $token")
+            
+            if (response.isSuccessful && response.body() != null) {
+                val orders = response.body()!!
+                println("🔍 DEBUG - ExtraOrderRepository: Got ${orders.size} extra orders")
+                Result.success(orders)
+            } else {
+                val errorMessage = "Failed to get extra orders: ${response.message()}"
+                println("🔍 DEBUG - ExtraOrderRepository: $errorMessage")
+                Result.failure(Exception(errorMessage))
+            }
+
+        } catch (e: Exception) {
+            println("🔍 DEBUG - ExtraOrderRepository: Exception: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
+
+    suspend fun cancelExtraOrder(orderId: Int): Result<Unit> {
+        return try {
+            println("🔍 DEBUG - ExtraOrderRepository: Cancelling extra order $orderId")
+            
+            val token = authRepository.getAuthToken().first()
+            if (token.isNullOrEmpty()) {
+                println("🔍 DEBUG - ExtraOrderRepository: ERROR - No authentication token")
+                return Result.failure(Exception("No authentication token"))
+            }
+
+            val response = extraOrderApi.cancelExtraOrder(orderId, "Bearer $token")
+            
+            if (response.isSuccessful) {
+                println("🔍 DEBUG - ExtraOrderRepository: Order cancelled successfully")
+                Result.success(Unit)
+            } else {
+                val errorMessage = "Failed to cancel order: ${response.message()}"
+                println("🔍 DEBUG - ExtraOrderRepository: $errorMessage")
+                Result.failure(Exception(errorMessage))
+            }
+
+        } catch (e: Exception) {
+            println("🔍 DEBUG - ExtraOrderRepository: Exception: ${e.message}")
+            e.printStackTrace()
+            Result.failure(e)
+        }
+    }
 } 

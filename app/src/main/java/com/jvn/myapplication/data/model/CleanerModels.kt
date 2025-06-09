@@ -8,4 +8,10 @@ data class FulfillOrderResponse(
     val success: Boolean,
     val message: String,
     val orderId: Int?
+)
+
+data class CancelOrderResponse(
+    val success: Boolean,
+    val message: String,
+    val orderId: Int?
 ) 

@@ -7,6 +7,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 
@@ -22,4 +23,10 @@ interface ExtraOrderApiService {
         @Header("Authorization") token: String,
         @Body request: CreateExtraOrderRequest
     ): Response<CreateExtraOrderResponse>
+
+    @PATCH("api/extra-orders/{id}/cancel")
+    suspend fun cancelExtraOrder(
+        @Path("id") orderId: Int,
+        @Header("Authorization") token: String
+    ): Response<Unit>
 } 

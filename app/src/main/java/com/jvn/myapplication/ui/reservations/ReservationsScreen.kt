@@ -2,6 +2,7 @@ package com.jvn.myapplication.ui.reservations
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,6 +26,7 @@ import com.jvn.myapplication.data.model.Reservation
 import com.jvn.myapplication.data.repository.AuthRepository
 import com.jvn.myapplication.data.repository.ReservationRepository
 import com.jvn.myapplication.ui.screens.OpenBoxScreen
+import com.jvn.myapplication.ui.screens.OrderHistoryScreen
 import kotlinx.coroutines.flow.MutableStateFlow
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -51,6 +53,9 @@ fun ReservationsScreen() {
     // State for Extra Orders screen navigation
     var showExtraOrdersScreen by remember { mutableStateOf(false) }
     var selectedReservation by remember { mutableStateOf<Reservation?>(null) }
+    
+    // State for Order History screen navigation
+    var showOrderHistoryScreen by remember { mutableStateOf(false) }
 
     // User data
     val userId by authRepository.getUserId().collectAsState(initial = null)
@@ -207,7 +212,7 @@ fun ReservationsScreen() {
                         }
                     }
                     
-                    uiState.errorMessage != null -> {
+                    !uiState.errorMessage.isNullOrEmpty() -> {
                         // Error state
                         Column(
                             modifier = Modifier.fillMaxSize(),
@@ -222,18 +227,17 @@ fun ReservationsScreen() {
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
+                                "Error loading reservations",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = textDark
+                            )
+                            Text(
                                 uiState.errorMessage!!,
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = textDark,
+                                color = textLight,
                                 textAlign = TextAlign.Center
                             )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(
-                                onClick = { viewModel?.loadReservations() ?: Unit },
-                                colors = ButtonDefaults.buttonColors(containerColor = airbnbRed)
-                            ) {
-                                Text("Retry")
-                            }
                         }
                     }
                     
@@ -284,6 +288,10 @@ fun ReservationsScreen() {
                                     onOrderItems = { 
                                         selectedReservation = reservation
                                         showExtraOrdersScreen = true
+                                    },
+                                    onOrderHistory = { reservationId ->
+                                        selectedReservationId = reservationId
+                                        showOrderHistoryScreen = true
                                     },
                                     isCheckingIn = uiState.checkingInReservations.contains(reservation.id),
                                     isCheckingOut = uiState.checkingOutReservations.contains(reservation.id)
@@ -336,6 +344,17 @@ fun ReservationsScreen() {
             }
         )
     }
+    
+    // Order History Screen overlay
+    if (showOrderHistoryScreen && selectedReservationId != null) {
+        OrderHistoryScreen(
+            reservationId = selectedReservationId!!,
+            onBackClick = {
+                showOrderHistoryScreen = false
+                selectedReservationId = null
+            }
+        )
+    }
 }
 
 @Composable
@@ -346,6 +365,7 @@ private fun ReservationCard(
     onCheckOut: () -> Unit,
     onOpenBox: (Int) -> Unit,
     onOrderItems: () -> Unit,
+    onOrderHistory: (Int) -> Unit,
     isCheckingIn: Boolean,
     isCheckingOut: Boolean
 ) {
@@ -488,61 +508,173 @@ private fun ReservationCard(
                     }
                 }
                 "CHECKED_IN" -> {
-                    // Order Items button
-                    Button(
-                        onClick = onOrderItems,
+                    // Order-related actions section
+                    Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            modifier = Modifier.padding(16.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.ShoppingCart,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "ORDER ITEMS",
-                                fontWeight = FontWeight.Bold
+                                text = "Order Actions",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = textLight,
+                                modifier = Modifier.padding(bottom = 8.dp)
                             )
+                            
+                            // Order Items button
+                            Button(
+                                onClick = onOrderItems,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.ShoppingCart,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "ORDER ITEMS",
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            // Order History button for CHECKED_IN
+                            OutlinedButton(
+                                onClick = { onOrderHistory(reservation.id) },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color(0xFF9C27B0)
+                                ),
+                                border = BorderStroke(1.dp, Color(0xFF9C27B0)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.List,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "ORDER HISTORY",
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
                         }
                     }
                     
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(20.dp)) // Large spacing to separate sections
                     
-                    // Check Out button
-                    Button(
-                        onClick = { onOpenBox(reservation.id) },
+                    // Check Out section - Primary action
+                    Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
-                        shape = RoundedCornerShape(12.dp),
-                        enabled = !isCheckingOut
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFE3F2FD)), // Light blue background
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
+                        Column(
+                            modifier = Modifier.padding(16.dp)
                         ) {
-                            if (isCheckingOut) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(16.dp),
-                                    color = Color.White,
-                                    strokeWidth = 2.dp
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("CHECKING OUT...")
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Default.Lock,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = "CHECK OUT",
-                                    fontWeight = FontWeight.Bold
-                                )
+                            Text(
+                                text = "Ready to Leave?",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF1976D2),
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            
+                            Button(
+                                onClick = { onOpenBox(reservation.id) },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
+                                shape = RoundedCornerShape(12.dp),
+                                enabled = !isCheckingOut
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    if (isCheckingOut) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(16.dp),
+                                            color = Color.White,
+                                            strokeWidth = 2.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("CHECKING OUT...")
+                                    } else {
+                                        Icon(
+                                            imageVector = Icons.Default.Lock,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "CHECK OUT",
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                "CHECKED_OUT" -> {
+                    // Order Actions section for checked out reservations - same style as CHECKED_IN
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8F9FA)), // Same light gray as CHECKED_IN
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp)
+                        ) {
+                            Text(
+                                text = "Order Actions",
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Medium,
+                                color = textLight,
+                                modifier = Modifier.padding(bottom = 8.dp)
+                            )
+                            
+                            // Only Order History button for CHECKED_OUT
+                            OutlinedButton(
+                                onClick = { onOrderHistory(reservation.id) },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = ButtonDefaults.outlinedButtonColors(
+                                    contentColor = Color(0xFF9C27B0)
+                                ),
+                                border = BorderStroke(1.dp, Color(0xFF9C27B0)),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.List,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "ORDER HISTORY",
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
                     }
@@ -555,10 +687,11 @@ private fun ReservationCard(
 @Composable
 private fun StatusChip(status: String) {
     val (backgroundColor, textColor) = when (status.lowercase()) {
-        "active" -> Color(0xFF4CAF50).copy(alpha = 0.1f) to Color(0xFF4CAF50)
+        "checked_in" -> Color(0xFF4CAF50).copy(alpha = 0.1f) to Color(0xFF4CAF50) // Same green as ORDER ITEMS
+        "checked_out" -> Color(0xFF2196F3).copy(alpha = 0.1f) to Color(0xFF2196F3) // Same blue as CHECK OUT
         "pending" -> Color(0xFFFF9800).copy(alpha = 0.1f) to Color(0xFFFF9800)
-        "completed" -> Color(0xFF2196F3).copy(alpha = 0.1f) to Color(0xFF2196F3)
         "cancelled" -> Color(0xFFF44336).copy(alpha = 0.1f) to Color(0xFFF44336)
+        "completed" -> Color(0xFF2196F3).copy(alpha = 0.1f) to Color(0xFF2196F3)
         else -> Color(0xFF757575).copy(alpha = 0.1f) to Color(0xFF757575)
     }
     

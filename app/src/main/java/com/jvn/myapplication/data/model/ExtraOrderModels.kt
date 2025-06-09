@@ -7,7 +7,8 @@ data class ExtraOrder(
     val reservation: ReservationDetail,
     val items: List<ExtraOrderItem>,
     val totalPrice: String,
-    val status: String, // e.g., "PENDING", "CONFIRMED", "DELIVERED"
+    val status: String, // e.g., "PENDING", "CONFIRMED", "DELIVERED", "FULFILLED"
+    val fulfilledBy: User?,
     val fulfilledAt: String?,
     val notes: String?,
     val createdAt: String,
