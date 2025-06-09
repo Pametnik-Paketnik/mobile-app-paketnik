@@ -44,8 +44,14 @@ fun MainNavigation(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
-    // All user types see the same navigation items now
-    val filteredBottomNavItems = bottomNavItems
+    // Filter bottom navigation items based on user type
+    val filteredBottomNavItems = when (userType) {
+        "CLEANER" -> listOf(
+            BottomNavItem.Home,        // Cleaner dashboard
+            BottomNavItem.UserSettings // Settings only
+        )
+        else -> bottomNavItems // All tabs for USER and HOST
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -104,7 +110,17 @@ fun MainNavigation(
                 }
                 
                 composable(BottomNavItem.BoxesHistory.route) {
-                    BoxesHistoryScreen()
+                    // Only allow USER and HOST to access boxes history
+                    if (userType == "CLEANER") {
+                        // Redirect CLEANERs back to their dashboard
+                        LaunchedEffect(Unit) {
+                            navController.navigate(BottomNavItem.Home.route) {
+                                popUpTo(BottomNavItem.Home.route) { inclusive = true }
+                            }
+                        }
+                    } else {
+                        BoxesHistoryScreen()
+                    }
                 }
                 
                 composable(BottomNavItem.UserSettings.route) {
