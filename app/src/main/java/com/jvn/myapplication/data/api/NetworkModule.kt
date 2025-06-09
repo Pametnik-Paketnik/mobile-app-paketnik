@@ -47,4 +47,12 @@ object NetworkModule {
     val faceAuthApi: FaceAuthApiService by lazy {
         retrofit.create(FaceAuthApiService::class.java)
     }
+
+    val extraOrderApi: ExtraOrderApiService by lazy {
+        retrofit.create(ExtraOrderApiService::class.java)
+    }
+
+    val inventoryApi: InventoryApiService by lazy {
+        retrofit.create(InventoryApiService::class.java)
+    }
 }

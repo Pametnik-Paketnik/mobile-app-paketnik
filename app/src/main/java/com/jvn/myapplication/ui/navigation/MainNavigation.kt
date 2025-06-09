@@ -43,12 +43,15 @@ fun MainNavigation(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
+    // All user types see the same navigation items now
+    val filteredBottomNavItems = bottomNavItems
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = lightGray,
         bottomBar = {
             BottomNavigationBar(
-                items = bottomNavItems,
+                items = filteredBottomNavItems,
                 currentDestination = currentRoute,
                 onItemClick = { route ->
                     // If BoxDetailScreen is shown, close it when navigating to another tab

@@ -47,6 +47,10 @@ fun ReservationsScreen() {
     // State for Open Box screen navigation
     var showOpenBoxScreen by remember { mutableStateOf(false) }
     var selectedReservationId by remember { mutableStateOf<Int?>(null) }
+    
+    // State for Extra Orders screen navigation
+    var showExtraOrdersScreen by remember { mutableStateOf(false) }
+    var selectedReservation by remember { mutableStateOf<Reservation?>(null) }
 
     // User data
     val userId by authRepository.getUserId().collectAsState(initial = null)
@@ -276,6 +280,10 @@ fun ReservationsScreen() {
                                         selectedReservationId = reservationId
                                         showOpenBoxScreen = true
                                     },
+                                    onOrderItems = { 
+                                        selectedReservation = reservation
+                                        showExtraOrdersScreen = true
+                                    },
                                     isCheckingIn = uiState.checkingInReservations.contains(reservation.id),
                                     isCheckingOut = uiState.checkingOutReservations.contains(reservation.id)
                                 )
@@ -316,6 +324,17 @@ fun ReservationsScreen() {
             }
         )
     }
+    
+    // Extra Orders Screen overlay
+    if (showExtraOrdersScreen && selectedReservation != null) {
+        ExtraOrdersScreen(
+            reservation = selectedReservation!!,
+            onBackClick = {
+                showExtraOrdersScreen = false
+                selectedReservation = null
+            }
+        )
+    }
 }
 
 @Composable
@@ -324,6 +343,7 @@ private fun ReservationCard(
     onCheckIn: () -> Unit,
     onCheckOut: () -> Unit,
     onOpenBox: (Int) -> Unit,
+    onOrderItems: () -> Unit,
     isCheckingIn: Boolean,
     isCheckingOut: Boolean
 ) {
@@ -428,6 +448,32 @@ private fun ReservationCard(
                     }
                 }
                 "CHECKED_IN" -> {
+                    // Order Items button
+                    Button(
+                        onClick = onOrderItems,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ShoppingCart,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "ORDER ITEMS",
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    // Check Out button
                     Button(
                         onClick = { onOpenBox(reservation.id) },
                         modifier = Modifier.fillMaxWidth(),
