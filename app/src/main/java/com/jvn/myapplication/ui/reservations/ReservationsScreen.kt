@@ -6,6 +6,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -56,6 +57,9 @@ fun ReservationsScreen() {
     
     // State for Order History screen navigation
     var showOrderHistoryScreen by remember { mutableStateOf(false) }
+    
+    // State for filtering
+    var selectedFilter by remember { mutableStateOf("ALL") } // ALL, CHECKED_IN, PENDING, CHECKED_OUT
 
     // User data
     val userId by authRepository.getUserId().collectAsState(initial = null)
@@ -89,6 +93,26 @@ fun ReservationsScreen() {
     }
 
     val uiState by (viewModel?.uiState ?: MutableStateFlow(ReservationsUiState())).collectAsState()
+    
+    // Filter and sort reservations
+    val filteredAndSortedReservations = remember(uiState.reservations, selectedFilter) {
+        val filtered = when (selectedFilter) {
+            "CHECKED_IN" -> uiState.reservations.filter { it.status.uppercase() == "CHECKED_IN" }
+            "PENDING" -> uiState.reservations.filter { it.status.uppercase() == "PENDING" }
+            "CHECKED_OUT" -> uiState.reservations.filter { it.status.uppercase() == "CHECKED_OUT" }
+            else -> uiState.reservations // ALL
+        }
+        
+        // Sort by priority: CHECKED_IN first, PENDING second, CHECKED_OUT last
+        filtered.sortedWith(compareBy { reservation ->
+            when (reservation.status.uppercase()) {
+                "CHECKED_IN" -> 1
+                "PENDING" -> 2
+                "CHECKED_OUT" -> 3
+                else -> 4
+            }
+        })
+    }
 
     LaunchedEffect(viewModel) {
         if (viewModel != null) {
@@ -170,7 +194,59 @@ fun ReservationsScreen() {
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // Filter chips
+        AnimatedVisibility(
+            visible = isContentVisible,
+            enter = slideInVertically(
+                initialOffsetY = { it },
+                animationSpec = tween(600, delayMillis = 200)
+            ) + fadeIn(animationSpec = tween(600, delayMillis = 200))
+        ) {
+            LazyRow(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(horizontal = 4.dp)
+            ) {
+                item {
+                    ReservationFilterChip(
+                        text = "All",
+                        isSelected = selectedFilter == "ALL",
+                        onClick = { selectedFilter = "ALL" },
+                        count = uiState.reservations.size
+                    )
+                }
+                item {
+                    ReservationFilterChip(
+                        text = "Active",
+                        isSelected = selectedFilter == "CHECKED_IN",
+                        onClick = { selectedFilter = "CHECKED_IN" },
+                        count = uiState.reservations.count { it.status.uppercase() == "CHECKED_IN" }
+                    )
+                }
+                item {
+                    ReservationFilterChip(
+                        text = "Pending",
+                        isSelected = selectedFilter == "PENDING",
+                        onClick = { selectedFilter = "PENDING" },
+                        count = uiState.reservations.count { it.status.uppercase() == "PENDING" }
+                    )
+                }
+                item {
+                    ReservationFilterChip(
+                        text = "Completed",
+                        isSelected = selectedFilter == "CHECKED_OUT",
+                        onClick = { selectedFilter = "CHECKED_OUT" },
+                        count = uiState.reservations.count { it.status.uppercase() == "CHECKED_OUT" }
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Content area
         Box(
@@ -178,21 +254,8 @@ fun ReservationsScreen() {
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
-            // Add debug info at the top
-            val currentUserId = userId
-            if (currentUserId != null) {
-                Text(
-                    "DEBUG: UserId='$currentUserId', ViewModel=${if (viewModel != null) "Created" else "NULL"}, " +
-                    "Loading=${uiState.isLoading}, Reservations=${uiState.reservations.size}, " +
-                    "Error='${uiState.errorMessage}'",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = airbnbRed,
-                    modifier = Modifier.padding(8.dp)
-                )
-            }
-            
             Column(
-                modifier = Modifier.fillMaxSize().padding(top = if (currentUserId != null) 60.dp else 0.dp)
+                modifier = Modifier.fillMaxSize()
             ) {
                 when {
                     uiState.isLoading -> {
@@ -241,7 +304,7 @@ fun ReservationsScreen() {
                         }
                     }
                     
-                    uiState.reservations.isEmpty() && !uiState.isLoading -> {
+                    filteredAndSortedReservations.isEmpty() && !uiState.isLoading -> {
                         // Empty state
                         Column(
                             modifier = Modifier.fillMaxSize(),
@@ -256,13 +319,16 @@ fun ReservationsScreen() {
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                "No reservations found",
+                                text = if (selectedFilter == "ALL") "No reservations found" else "No ${selectedFilter.lowercase().replace("_", " ")} reservations",
                                 style = MaterialTheme.typography.headlineSmall,
                                 fontWeight = FontWeight.Bold,
                                 color = textDark
                             )
                             Text(
-                                "Your box reservations will appear here",
+                                text = if (selectedFilter == "ALL") 
+                                    "Your box reservations will appear here" 
+                                else 
+                                    "No reservations match the selected filter",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = textLight,
                                 textAlign = TextAlign.Center
@@ -275,7 +341,7 @@ fun ReservationsScreen() {
                         LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            items(uiState.reservations) { reservation ->
+                            items(filteredAndSortedReservations) { reservation ->
                                 ReservationCard(
                                     reservation = reservation,
                                     allReservations = uiState.reservations,
@@ -475,7 +541,7 @@ private fun ReservationCard(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = if (shouldDisableCheckIn) "ALREADY CHECKED IN ELSEWHERE" else "CHECK IN",
+                                    text = if (shouldDisableCheckIn) "CHECK IN" else "CHECK IN",
                                     fontWeight = FontWeight.Bold,
                                     color = if (shouldDisableCheckIn) Color(0xFF9E9E9E) else Color.White
                                 )
@@ -744,6 +810,65 @@ private fun DetailRow(
             fontWeight = FontWeight.Medium
         )
     }
+}
+
+@Composable
+private fun ReservationFilterChip(
+    text: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    count: Int
+) {
+    val airbnbRed = Color(0xFFFF5A5F)
+    val textDark = Color(0xFF484848)
+    val textLight = Color(0xFF767676)
+    val cardWhite = Color(0xFFFFFFFF)
+    
+    FilterChip(
+        selected = isSelected,
+        onClick = onClick,
+        label = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                )
+                if (count > 0) {
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                if (isSelected) cardWhite.copy(alpha = 0.8f) else airbnbRed.copy(alpha = 0.1f),
+                                RoundedCornerShape(8.dp)
+                            )
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = count.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isSelected) airbnbRed else textDark,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        },
+        colors = FilterChipDefaults.filterChipColors(
+            containerColor = cardWhite,
+            labelColor = textDark,
+            selectedContainerColor = airbnbRed,
+            selectedLabelColor = cardWhite
+        ),
+        border = FilterChipDefaults.filterChipBorder(
+            enabled = true,
+            selected = isSelected,
+            borderColor = if (isSelected) airbnbRed else textLight.copy(alpha = 0.5f),
+            selectedBorderColor = airbnbRed
+        )
+    )
 }
 
 private fun formatDate(dateString: String): String {
