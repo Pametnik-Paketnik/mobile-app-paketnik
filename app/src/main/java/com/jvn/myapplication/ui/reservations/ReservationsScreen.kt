@@ -274,6 +274,7 @@ fun ReservationsScreen() {
                             items(uiState.reservations) { reservation ->
                                 ReservationCard(
                                     reservation = reservation,
+                                    allReservations = uiState.reservations,
                                     onCheckIn = { viewModel?.checkIn(reservation.id) ?: Unit },
                                     onCheckOut = { viewModel?.checkOut(reservation.id) ?: Unit },
                                     onOpenBox = { reservationId ->
@@ -340,6 +341,7 @@ fun ReservationsScreen() {
 @Composable
 private fun ReservationCard(
     reservation: Reservation,
+    allReservations: List<Reservation>,
     onCheckIn: () -> Unit,
     onCheckOut: () -> Unit,
     onOpenBox: (Int) -> Unit,
@@ -352,6 +354,11 @@ private fun ReservationCard(
     val cardWhite = Color(0xFFFFFFFF)
     val textDark = Color(0xFF484848)
     val textLight = Color(0xFF767676)
+    
+    // Check if user already has a CHECKED_IN reservation
+    val hasCheckedInReservation = allReservations.any { it.status.uppercase() == "CHECKED_IN" }
+    val isCurrentPending = reservation.status.uppercase() == "PENDING"
+    val shouldDisableCheckIn = hasCheckedInReservation && isCurrentPending
 
     Card(
         modifier = Modifier
@@ -415,11 +422,18 @@ private fun ReservationCard(
             when (reservation.status.uppercase()) {
                 "PENDING" -> {
                     Button(
-                        onClick = { onOpenBox(reservation.id) },
+                        onClick = { 
+                            if (!shouldDisableCheckIn) {
+                                onOpenBox(reservation.id)
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = airbnbRed),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (shouldDisableCheckIn) Color(0xFFE0E0E0) else airbnbRed,
+                            disabledContainerColor = Color(0xFFE0E0E0)
+                        ),
                         shape = RoundedCornerShape(12.dp),
-                        enabled = !isCheckingIn
+                        enabled = !isCheckingIn && !shouldDisableCheckIn
                     ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically
@@ -436,14 +450,40 @@ private fun ReservationCard(
                                 Icon(
                                     imageVector = Icons.Default.Lock,
                                     contentDescription = null,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(20.dp),
+                                    tint = if (shouldDisableCheckIn) Color(0xFF9E9E9E) else Color.White
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "CHECK IN",
-                                    fontWeight = FontWeight.Bold
+                                    text = if (shouldDisableCheckIn) "ALREADY CHECKED IN ELSEWHERE" else "CHECK IN",
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (shouldDisableCheckIn) Color(0xFF9E9E9E) else Color.White
                                 )
                             }
+                        }
+                    }
+                    
+                    // Show explanation when button is disabled
+                    if (shouldDisableCheckIn) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = textLight,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Check out from your current reservation first",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = textLight,
+                                textAlign = TextAlign.Center
+                            )
                         }
                     }
                 }
