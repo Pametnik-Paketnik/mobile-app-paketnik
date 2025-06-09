@@ -14,6 +14,7 @@ import androidx.navigation.compose.rememberNavController
 import com.jvn.myapplication.ui.screens.BoxesHistoryScreen
 import com.jvn.myapplication.ui.screens.BoxesListScreen
 import com.jvn.myapplication.ui.screens.BoxDetailScreen
+import com.jvn.myapplication.ui.screens.CleanerScreen
 import com.jvn.myapplication.ui.screens.HomeScreen
 import com.jvn.myapplication.ui.screens.UserSettingsScreen
 import com.jvn.myapplication.data.repository.AuthRepository
@@ -97,6 +98,7 @@ fun MainNavigation(
                             }
                         )
                         "HOST" -> HomeScreen() // Keep existing QR scanner for hosts
+                        "CLEANER" -> CleanerScreen() // Cleaner dashboard with extra orders
                         else -> HomeScreen() // Default fallback
                     }
                 }

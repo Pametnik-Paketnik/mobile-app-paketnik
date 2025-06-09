@@ -55,4 +55,8 @@ object NetworkModule {
     val inventoryApi: InventoryApiService by lazy {
         retrofit.create(InventoryApiService::class.java)
     }
+
+    val cleanerApi: CleanerApiService by lazy {
+        retrofit.create(CleanerApiService::class.java)
+    }
 }
