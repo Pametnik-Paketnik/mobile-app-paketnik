@@ -4,6 +4,7 @@ import android.content.Context
 import com.jvn.myapplication.data.api.NetworkModule
 import com.jvn.myapplication.data.api.CreateReservationRequest
 import com.jvn.myapplication.data.api.ReservationResponse
+import com.jvn.myapplication.data.api.UpdateReservationRequest
 import com.jvn.myapplication.data.model.CheckInRequest
 import com.jvn.myapplication.data.model.CheckInResponse
 import com.jvn.myapplication.data.model.CheckOutRequest
@@ -66,12 +67,39 @@ class ReservationRepository(private val context: Context) {
             }
 
             println("🔍 DEBUG - ReservationRepository: Checking in reservation $reservationId")
+            
+            // Step 1: Perform the check-in
             val request = CheckInRequest(reservationId)
             val response = reservationApi.checkIn("Bearer $token", request)
             
             if (response.isSuccessful && response.body() != null) {
                 val checkInResponse = response.body()!!
                 println("🔍 DEBUG - ReservationRepository: Check-in response: ${checkInResponse.message}")
+                
+                // Step 2: Update the checkinAt timestamp with current time
+                try {
+                    val currentTimestamp = getCurrentTimestamp()
+                    println("🔍 DEBUG - ReservationRepository: Updating checkinAt to current time: $currentTimestamp")
+                    
+                    val updateRequest = UpdateReservationRequest(
+                        checkinAt = currentTimestamp
+                    )
+                    val updateResponse = reservationApi.updateReservation(
+                        reservationId.toString(),
+                        "Bearer $token",
+                        updateRequest
+                    )
+                    
+                    if (updateResponse.isSuccessful) {
+                        println("🔍 DEBUG - ReservationRepository: Successfully updated checkinAt timestamp")
+                    } else {
+                        println("🔍 DEBUG - ReservationRepository: Warning - Failed to update checkinAt timestamp: ${updateResponse.message()}")
+                    }
+                } catch (e: Exception) {
+                    println("🔍 DEBUG - ReservationRepository: Warning - Exception updating checkinAt: ${e.message}")
+                    // Don't fail the whole operation if timestamp update fails
+                }
+                
                 Result.success(checkInResponse)
             } else {
                 val errorMessage = "Check-in failed: ${response.message()}"
@@ -92,12 +120,39 @@ class ReservationRepository(private val context: Context) {
             }
 
             println("🔍 DEBUG - ReservationRepository: Checking out reservation $reservationId")
+            
+            // Step 1: Perform the check-out
             val request = CheckOutRequest(reservationId)
             val response = reservationApi.checkOut("Bearer $token", request)
             
             if (response.isSuccessful && response.body() != null) {
                 val checkOutResponse = response.body()!!
                 println("🔍 DEBUG - ReservationRepository: Check-out response: ${checkOutResponse.message}")
+                
+                // Step 2: Update the checkoutAt timestamp with current time
+                try {
+                    val currentTimestamp = getCurrentTimestamp()
+                    println("🔍 DEBUG - ReservationRepository: Updating checkoutAt to current time: $currentTimestamp")
+                    
+                    val updateRequest = UpdateReservationRequest(
+                        checkoutAt = currentTimestamp
+                    )
+                    val updateResponse = reservationApi.updateReservation(
+                        reservationId.toString(),
+                        "Bearer $token",
+                        updateRequest
+                    )
+                    
+                    if (updateResponse.isSuccessful) {
+                        println("🔍 DEBUG - ReservationRepository: Successfully updated checkoutAt timestamp")
+                    } else {
+                        println("🔍 DEBUG - ReservationRepository: Warning - Failed to update checkoutAt timestamp: ${updateResponse.message()}")
+                    }
+                } catch (e: Exception) {
+                    println("🔍 DEBUG - ReservationRepository: Warning - Exception updating checkoutAt: ${e.message}")
+                    // Don't fail the whole operation if timestamp update fails
+                }
+                
                 Result.success(checkOutResponse)
             } else {
                 val errorMessage = "Check-out failed: ${response.message()}"
@@ -212,5 +267,11 @@ class ReservationRepository(private val context: Context) {
         } catch (e: Exception) {
             timestamp // Return original if parsing fails
         }
+    }
+
+    private fun getCurrentTimestamp(): String {
+        val currentDate = Date()
+        val dateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+        return dateFormat.format(currentDate)
     }
 } 

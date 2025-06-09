@@ -30,6 +30,7 @@ import com.jvn.myapplication.data.repository.ReservationRepository
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.*
 
@@ -58,6 +59,8 @@ fun BoxDetailScreen(
     
     // State for date range and availability
     var selectedDateRange by remember { mutableStateOf<Pair<LocalDate?, LocalDate?>>(null to null) }
+    var selectedStartTime by remember { mutableStateOf(LocalTime.of(15, 0)) } // Default 3 PM check-in
+    var selectedEndTime by remember { mutableStateOf(LocalTime.of(11, 0)) } // Default 11 AM check-out
     var unavailableDates by remember { mutableStateOf<Set<LocalDate>>(emptySet()) }
     var showDateRangePicker by remember { mutableStateOf(false) }
     var isLoadingAvailability by remember { mutableStateOf(false) }
@@ -314,7 +317,7 @@ fun BoxDetailScreen(
                         // Date Range Selection
                         OutlinedTextField(
                             value = if (selectedDateRange.first != null && selectedDateRange.second != null) {
-                                "${selectedDateRange.first?.format(dateFormatter)} - ${selectedDateRange.second?.format(dateFormatter)}"
+                                "${selectedDateRange.first?.format(dateFormatter)} ${selectedStartTime.format(DateTimeFormatter.ofPattern("HH:mm"))} - ${selectedDateRange.second?.format(dateFormatter)} ${selectedEndTime.format(DateTimeFormatter.ofPattern("HH:mm"))}"
                             } else if (selectedDateRange.first != null) {
                                 "${selectedDateRange.first?.format(dateFormatter)} - Select end date"
                             } else {
@@ -323,7 +326,7 @@ fun BoxDetailScreen(
                             onValueChange = { },
                             label = { 
                                 Text(
-                                    "Select dates",
+                                    "Select dates and times",
                                     style = MaterialTheme.typography.bodySmall
                                 ) 
                             },
@@ -336,7 +339,7 @@ fun BoxDetailScreen(
                             modifier = Modifier.fillMaxWidth(),
                             placeholder = { 
                                 Text(
-                                    "Tap to select check-in and check-out dates",
+                                    "Tap to select check-in and check-out dates & times",
                                     style = MaterialTheme.typography.bodySmall
                                 ) 
                             },
@@ -449,9 +452,12 @@ fun BoxDetailScreen(
                                 
                                 scope.launch {
                                     try {
-                                        // Convert LocalDate to ISO string format for API
-                                        val checkinAt = selectedDateRange.first!!.atStartOfDay().toString() + "Z"
-                                        val checkoutAt = selectedDateRange.second!!.atStartOfDay().toString() + "Z"
+                                        // Convert LocalDate and LocalTime to ISO string format for API
+                                        val checkinDateTime = selectedDateRange.first!!.atTime(selectedStartTime)
+                                        val checkoutDateTime = selectedDateRange.second!!.atTime(selectedEndTime)
+                                        
+                                        val checkinAt = checkinDateTime.toString() + "Z"
+                                        val checkoutAt = checkoutDateTime.toString() + "Z"
                                         
                                         // Convert currentUserId to int
                                         val guestId = currentUserId!!.toIntOrNull()
@@ -633,7 +639,11 @@ fun BoxDetailScreen(
             onDismiss = { showDateRangePicker = false },
             unavailableDates = unavailableDates,
             initialStartDate = selectedDateRange.first,
-            initialEndDate = selectedDateRange.second
+            initialEndDate = selectedDateRange.second,
+            onTimesSelected = { startTime, endTime ->
+                selectedStartTime = startTime
+                selectedEndTime = endTime
+            }
         )
     }
 }
@@ -749,8 +759,16 @@ fun DateRangePickerDialog(
     onDismiss: () -> Unit,
     unavailableDates: Set<LocalDate>,
     initialStartDate: LocalDate? = null,
-    initialEndDate: LocalDate? = null
+    initialEndDate: LocalDate? = null,
+    onTimesSelected: (LocalTime, LocalTime) -> Unit
 ) {
+    var showTimePickerDialog by remember { mutableStateOf(false) }
+    var isSelectingStartTime by remember { mutableStateOf(true) }
+    var tempStartDate by remember { mutableStateOf<LocalDate?>(initialStartDate) }
+    var tempEndDate by remember { mutableStateOf<LocalDate?>(initialEndDate) }
+    var startTime by remember { mutableStateOf(LocalTime.of(15, 0)) } // Default 3 PM check-in
+    var endTime by remember { mutableStateOf(LocalTime.of(11, 0)) } // Default 11 AM check-out
+    
     val dateRangePickerState = rememberDateRangePickerState(
         initialSelectedStartDateMillis = initialStartDate?.let { it.toEpochDay() * 24 * 60 * 60 * 1000L },
         initialSelectedEndDateMillis = initialEndDate?.let { it.toEpochDay() * 24 * 60 * 60 * 1000L }
@@ -790,13 +808,16 @@ fun DateRangePickerDialog(
                     }
                     
                     // Only confirm if selection is valid
-                    if (isValidSelection && (startDate != null || endDate != null)) {
-                        onDateRangeSelected(startDate, endDate)
+                    if (isValidSelection && startDate != null && endDate != null) {
+                        tempStartDate = startDate
+                        tempEndDate = endDate
+                        isSelectingStartTime = true
+                        showTimePickerDialog = true
                     }
                 },
-                enabled = (startMillis != null || endMillis != null) && isValidSelection
+                enabled = (startMillis != null && endMillis != null) && isValidSelection
             ) {
-                Text("Confirm")
+                Text("Select Times")
             }
         },
         dismissButton = {
@@ -816,12 +837,88 @@ fun DateRangePickerDialog(
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 )
-                
-
             }
         },
         title = {
             Text("Select Date Range")
+        }
+    )
+    
+    // Time picker dialog
+    if (showTimePickerDialog) {
+        TimePickerDialog(
+            title = if (isSelectingStartTime) "Select Check-in Time" else "Select Check-out Time",
+            initialTime = if (isSelectingStartTime) startTime else endTime,
+            onTimeSelected = { selectedTime ->
+                if (isSelectingStartTime) {
+                    startTime = selectedTime
+                    isSelectingStartTime = false
+                    // Continue to end time selection
+                } else {
+                    endTime = selectedTime
+                    // Both dates and times selected, confirm the selection
+                    onDateRangeSelected(tempStartDate, tempEndDate)
+                    onTimesSelected(startTime, endTime)
+                    showTimePickerDialog = false
+                }
+            },
+            onDismiss = {
+                if (isSelectingStartTime) {
+                    // User cancelled during start time selection
+                    showTimePickerDialog = false
+                } else {
+                    // User cancelled during end time selection, go back to start time
+                    isSelectingStartTime = true
+                }
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun TimePickerDialog(
+    title: String,
+    initialTime: LocalTime,
+    onTimeSelected: (LocalTime) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val timePickerState = rememberTimePickerState(
+        initialHour = initialTime.hour,
+        initialMinute = initialTime.minute,
+        is24Hour = true
+    )
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    val selectedTime = LocalTime.of(timePickerState.hour, timePickerState.minute)
+                    onTimeSelected(selectedTime)
+                }
+            ) {
+                Text("Confirm")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                TimePicker(
+                    state = timePickerState,
+                    modifier = Modifier.padding(16.dp)
+                )
+            }
+        },
+        title = {
+            Text(title)
         }
     )
 } 
