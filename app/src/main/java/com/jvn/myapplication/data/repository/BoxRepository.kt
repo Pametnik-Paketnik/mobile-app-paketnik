@@ -6,6 +6,8 @@ import com.jvn.myapplication.data.api.NetworkModule
 import com.jvn.myapplication.data.model.UnlockHistory
 import com.jvn.myapplication.data.model.UnlockHistoryWithUser
 import com.jvn.myapplication.data.model.BoxData
+import com.jvn.myapplication.data.model.BoxOpenRequest
+import com.jvn.myapplication.data.model.BoxOpenResponse
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.*
@@ -257,6 +259,62 @@ class BoxRepository(private val context: Context) {
                 Result.failure(Exception(errorMessage))
             }
         } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun openBox(boxId: Int, hostId: Int): Result<BoxOpenResponse> {
+        return try {
+            val token = authRepository.getAuthToken().first()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("No authentication token"))
+            }
+
+            println("🔍 DEBUG - BoxRepository: Opening box $boxId for host $hostId")
+
+            // First, verify that the host owns this box
+            val ownedBoxes = getBoxesByHost(hostId)
+                .getOrElse { 
+                    return Result.failure(Exception("Failed to verify box ownership"))
+                }
+
+            val boxExists = ownedBoxes.any { box -> 
+                box.boxId?.toIntOrNull() == boxId
+            }
+
+            if (!boxExists) {
+                println("🔍 DEBUG - BoxRepository: Host $hostId does not own box $boxId")
+                return Result.failure(Exception("You do not own this box. Access denied."))
+            }
+
+            println("🔍 DEBUG - BoxRepository: Ownership verified. Proceeding to open box $boxId")
+
+            // Make the API call to open the box
+            val request = BoxOpenRequest(boxId = boxId)
+            val response = boxApi.openBox(request, "Bearer $token")
+
+            println("🔍 DEBUG - BoxRepository: Open box API response code: ${response.code()}")
+            println("🔍 DEBUG - BoxRepository: Open box API response successful: ${response.isSuccessful}")
+
+            if (response.isSuccessful && response.body() != null) {
+                val boxOpenResponse = response.body()!!
+                println("🔍 DEBUG - BoxRepository: Box opened successfully")
+                println("🔍 DEBUG - BoxRepository: Result: ${boxOpenResponse.result}")
+                println("🔍 DEBUG - BoxRepository: ErrorNumber: ${boxOpenResponse.errorNumber}")
+                println("🔍 DEBUG - BoxRepository: TokenFormat: ${boxOpenResponse.tokenFormat}")
+                println("🔍 DEBUG - BoxRepository: Data length: ${boxOpenResponse.data.length}")
+                
+                Result.success(boxOpenResponse)
+            } else {
+                val errorBody = response.errorBody()?.string()
+                val errorMessage = "Failed to open box: ${response.message()}"
+                println("🔍 DEBUG - BoxRepository: $errorMessage")
+                println("🔍 DEBUG - Error body: $errorBody")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            println("🔍 DEBUG - BoxRepository: Exception in openBox: ${e.message}")
+            e.printStackTrace()
             Result.failure(e)
         }
     }

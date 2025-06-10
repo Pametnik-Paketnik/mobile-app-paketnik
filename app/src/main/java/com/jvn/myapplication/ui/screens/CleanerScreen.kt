@@ -29,9 +29,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jvn.myapplication.data.model.ExtraOrder
 import com.jvn.myapplication.data.repository.AuthRepository
 import com.jvn.myapplication.data.repository.CleanerRepository
+import com.jvn.myapplication.data.repository.BoxRepository
 import com.jvn.myapplication.ui.main.QRCodeScanner
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -53,13 +55,19 @@ fun CleanerScreen() {
     // Repositories
     val authRepository = remember { AuthRepository(context) }
     val cleanerRepository = remember { CleanerRepository(context) }
+    val boxRepository = remember { BoxRepository(context) }
+
+    // ViewModels
+    val cleanerBoxOpenViewModel: CleanerBoxOpenViewModel = viewModel {
+        CleanerBoxOpenViewModel(boxRepository, cleanerRepository, context)
+    }
 
     // State variables
     var extraOrders by remember { mutableStateOf<List<ExtraOrder>>(emptyList()) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isContentVisible by remember { mutableStateOf(false) }
-    var selectedOrderId by remember { mutableStateOf<Int?>(null) }
+    var selectedOrder by remember { mutableStateOf<ExtraOrder?>(null) }
     var isScanningActive by remember { mutableStateOf(false) }
     var showNotesDialog by remember { mutableStateOf(false) }
     var fulfillNotes by remember { mutableStateOf("") }
@@ -67,6 +75,9 @@ fun CleanerScreen() {
     // User data from repository
     val name by authRepository.getName().collectAsState(initial = null)
     val userType by authRepository.getUserType().collectAsState(initial = null)
+
+    // UI state for box opening
+    val cleanerBoxOpenUiState by cleanerBoxOpenViewModel.uiState.collectAsState()
 
     // Camera permission launcher
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
@@ -106,9 +117,10 @@ fun CleanerScreen() {
     }
 
     // Handle fulfill order - first scan QR, then add notes
-    fun handleFulfillOrder(orderId: Int) {
-        selectedOrderId = orderId
+    fun handleFulfillOrder(order: ExtraOrder) {
+        selectedOrder = order
         fulfillNotes = ""
+        cleanerBoxOpenViewModel.resetState()
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             isScanningActive = true
         } else {
@@ -116,39 +128,49 @@ fun CleanerScreen() {
         }
     }
 
-    // Handle notes submission after QR scan
+    // Handle notes submission after box opening
     fun submitFulfillment() {
-        val orderId = selectedOrderId
+        val order = selectedOrder
         val notes = fulfillNotes.trim().takeIf { it.isNotBlank() }
         
-        if (orderId != null) {
-            scope.launch {
-                try {
-                    cleanerRepository.fulfillOrder(orderId, notes)
-                        .onSuccess {
-                            Toast.makeText(context, "✅ Order fulfilled successfully!", Toast.LENGTH_LONG).show()
-                            // Reload orders to update the status
-                            cleanerRepository.getAllExtraOrders()
-                                .onSuccess { orders ->
-                                    extraOrders = orders
-                                }
-                        }
-                        .onFailure { exception ->
-                            Toast.makeText(context, "❌ Failed to fulfill order: ${exception.message}", Toast.LENGTH_LONG).show()
-                        }
-                } catch (e: Exception) {
-                    Toast.makeText(context, "❌ Error: ${e.message}", Toast.LENGTH_LONG).show()
-                }
-                
-                // Reset state
-                selectedOrderId = null
-                showNotesDialog = false
-                fulfillNotes = ""
-            }
+        if (order != null) {
+            cleanerBoxOpenViewModel.submitFulfillment(order.id, notes)
         }
     }
 
-    if (isScanningActive && selectedOrderId != null) {
+    // Handle successful box opening and fulfillment completion
+    LaunchedEffect(cleanerBoxOpenUiState.isBoxOpened, cleanerBoxOpenUiState.successMessage) {
+        if (cleanerBoxOpenUiState.isBoxOpened && cleanerBoxOpenUiState.successMessage != null) {
+            Toast.makeText(context, cleanerBoxOpenUiState.successMessage, Toast.LENGTH_LONG).show()
+            delay(2000)
+            // Reload orders to update the status
+            scope.launch {
+                cleanerRepository.getAllExtraOrders()
+                    .onSuccess { orders ->
+                        extraOrders = orders
+                    }
+            }
+            cleanerBoxOpenViewModel.resetState()
+            selectedOrder = null
+            isScanningActive = false
+            showNotesDialog = false
+            fulfillNotes = ""
+        }
+    }
+
+    // Handle box opening errors
+    LaunchedEffect(cleanerBoxOpenUiState.errorMessage) {
+        if (cleanerBoxOpenUiState.errorMessage != null) {
+            Toast.makeText(context, cleanerBoxOpenUiState.errorMessage, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // Handle notes dialog visibility
+    LaunchedEffect(cleanerBoxOpenUiState.showNotesDialog) {
+        showNotesDialog = cleanerBoxOpenUiState.showNotesDialog
+    }
+
+    if (isScanningActive && selectedOrder != null) {
         // QR Scanner UI - Full screen camera view
         AnimatedVisibility(
             visible = true,
@@ -207,10 +229,21 @@ fun CleanerScreen() {
                         .clip(RoundedCornerShape(24.dp))
                 ) {
                     QRCodeScanner(
-                        onQrCodeScanned = { boxId ->
-                            isScanningActive = false
-                            Toast.makeText(context, "✅ Box opened! Now add delivery notes.", Toast.LENGTH_SHORT).show()
-                            showNotesDialog = true
+                        onQrCodeScanned = { scannedData ->
+                            try {
+                                val boxId = scannedData.toIntOrNull()
+                                if (boxId != null && selectedOrder != null) {
+                                    println("🔍 DEBUG - CleanerScreen: QR scanned - Box ID: $boxId")
+                                    isScanningActive = false
+                                    cleanerBoxOpenViewModel.openBoxForOrder(boxId, selectedOrder!!)
+                                } else {
+                                    Toast.makeText(context, "Invalid QR code. Please scan a valid box QR code.", Toast.LENGTH_LONG).show()
+                                    isScanningActive = false
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Error processing QR code: ${e.message}", Toast.LENGTH_LONG).show()
+                                isScanningActive = false
+                            }
                         },
                         modifier = Modifier.fillMaxSize()
                     )
@@ -221,7 +254,8 @@ fun CleanerScreen() {
                 Button(
                     onClick = { 
                         isScanningActive = false
-                        selectedOrderId = null
+                        selectedOrder = null
+                        cleanerBoxOpenViewModel.clearMessages()
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -236,6 +270,120 @@ fun CleanerScreen() {
             }
         }
         return
+    }
+
+    // Box opening confirmation dialog (YES/NO)
+    if (cleanerBoxOpenUiState.showConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Don't allow dismissal during audio playback */ },
+            title = null,
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Sound wave icon
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowUp,
+                        contentDescription = null,
+                        tint = airbnbRed,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "Box Opening Signal Sent! 📦",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = textDark,
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "Listen to the confirmation sound and check if the box opened physically.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = textLight,
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    Text(
+                        text = "Did the box open successfully?",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = textDark,
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    Spacer(modifier = Modifier.height(20.dp))
+                    
+                    // Yes/No buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // NO button
+                        Button(
+                            onClick = {
+                                cleanerBoxOpenViewModel.confirmBoxOpening(false)
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = null,
+                                tint = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "NO",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                        
+                        // YES button
+                        Button(
+                            onClick = {
+                                cleanerBoxOpenViewModel.confirmBoxOpening(true)
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF4CAF50)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "YES",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {}
+        )
     }
 
     Column(
@@ -323,7 +471,7 @@ fun CleanerScreen() {
                     .padding(16.dp)
             ) {
                 when {
-                    isLoading -> {
+                    isLoading || cleanerBoxOpenUiState.isLoading -> {
                         // Loading state
                         Column(
                             modifier = Modifier.fillMaxSize(),
@@ -337,14 +485,14 @@ fun CleanerScreen() {
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                "Loading orders...",
+                                if (isLoading) "Loading orders..." else "Opening box...",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = textDark
                             )
                         }
                     }
 
-                    !errorMessage.isNullOrEmpty() -> {
+                    !errorMessage.isNullOrEmpty() || !cleanerBoxOpenUiState.errorMessage.isNullOrEmpty() -> {
                         // Error state
                         Column(
                             modifier = Modifier.fillMaxSize(),
@@ -365,7 +513,7 @@ fun CleanerScreen() {
                                 color = textDark
                             )
                             Text(
-                                text = errorMessage!!,
+                                text = errorMessage ?: cleanerBoxOpenUiState.errorMessage ?: "Unknown error",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = textLight,
                                 textAlign = TextAlign.Center
@@ -376,6 +524,7 @@ fun CleanerScreen() {
                                     scope.launch {
                                         isLoading = true
                                         errorMessage = null
+                                        cleanerBoxOpenViewModel.clearMessages()
                                         try {
                                             cleanerRepository.getAllExtraOrders()
                                                 .onSuccess { orders ->
@@ -436,7 +585,7 @@ fun CleanerScreen() {
                             items(extraOrders) { order ->
                                 ExtraOrderCard(
                                     order = order,
-                                    onFulfillClick = { handleFulfillOrder(order.id) }
+                                    onFulfillClick = { handleFulfillOrder(order) }
                                 )
                             }
                         }
@@ -447,12 +596,13 @@ fun CleanerScreen() {
     }
 
     // Notes Dialog for fulfillment
-    if (showNotesDialog && selectedOrderId != null) {
+    if (showNotesDialog && selectedOrder != null) {
         AlertDialog(
             onDismissRequest = {
                 showNotesDialog = false
-                selectedOrderId = null
+                selectedOrder = null
                 fulfillNotes = ""
+                cleanerBoxOpenViewModel.resetState()
             },
             title = {
                 Text(
@@ -464,9 +614,15 @@ fun CleanerScreen() {
             text = {
                 Column {
                     Text(
-                        text = "Order #$selectedOrderId",
+                        text = "Order #${selectedOrder!!.id}",
                         style = MaterialTheme.typography.bodyMedium,
                         color = textLight
+                    )
+                    Text(
+                        text = "Box opened successfully! ✅",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = successGreen,
+                        fontWeight = FontWeight.Medium
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     OutlinedTextField(
@@ -487,18 +643,29 @@ fun CleanerScreen() {
             confirmButton = {
                 Button(
                     onClick = { submitFulfillment() },
-                    colors = ButtonDefaults.buttonColors(containerColor = airbnbRed)
+                    colors = ButtonDefaults.buttonColors(containerColor = airbnbRed),
+                    enabled = !cleanerBoxOpenUiState.isLoading
                 ) {
-                    Text("Complete Fulfillment")
+                    if (cleanerBoxOpenUiState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text("Complete Fulfillment")
+                    }
                 }
             },
             dismissButton = {
                 TextButton(
                     onClick = {
                         showNotesDialog = false
-                        selectedOrderId = null
+                        selectedOrder = null
                         fulfillNotes = ""
-                    }
+                        cleanerBoxOpenViewModel.resetState()
+                    },
+                    enabled = !cleanerBoxOpenUiState.isLoading
                 ) {
                     Text("Cancel", color = textLight)
                 }

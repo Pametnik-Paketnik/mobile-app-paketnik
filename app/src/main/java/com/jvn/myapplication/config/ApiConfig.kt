@@ -29,7 +29,7 @@ object ApiConfig {
     
     // Real device configuration (UPDATE WITH YOUR NGROK URLS)
     private const val NGROK_API_URL = "https://mammoth-regular-hamster.ngrok-free.app"  // Your API ngrok URL
-    private const val NGROK_MINIO_URL = "https://f6bd-176-76-226-209.ngrok-free.app"  // Replace with your MinIO ngrok URL
+    private const val NGROK_MINIO_URL = "https://39dd-176-76-226-209.ngrok-free.app"  // Replace with your MinIO ngrok URL
     
     // Computed base URLs based on development mode
     val API_BASE_URL: String
