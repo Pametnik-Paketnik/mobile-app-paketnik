@@ -82,8 +82,8 @@ fun ProfileEditScreen(
             // Show toast notification
             Toast.makeText(context, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
             delay(500) // Shorter delay so user sees the toast
-            onProfileUpdated()
-            onBack()
+            onProfileUpdated() // Trigger data refresh
+            onBack() // Navigate back to settings
         }
     }
 

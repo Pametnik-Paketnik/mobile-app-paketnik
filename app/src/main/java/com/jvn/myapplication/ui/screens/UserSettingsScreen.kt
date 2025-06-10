@@ -42,6 +42,7 @@ fun UserSettingsScreen(
     // State for navigation
     var showProfileEdit by remember { mutableStateOf(false) }
     var showChangeEmail by remember { mutableStateOf(false) }
+    var showChangePassword by remember { mutableStateOf(false) }
     var profileUpdateTrigger by remember { mutableStateOf(0) }
     
     // Show ProfileEditScreen if needed
@@ -52,7 +53,7 @@ fun UserSettingsScreen(
                 // Profile was updated successfully - trigger refresh
                 println("🔍 DEBUG - UserSettingsScreen: Profile update completed, triggering refresh")
                 profileUpdateTrigger++
-                showProfileEdit = false
+                // Don't set showProfileEdit = false here, let the onBack handle navigation
             }
         )
         return
@@ -66,7 +67,22 @@ fun UserSettingsScreen(
                 // Email was updated successfully - trigger refresh
                 println("🔍 DEBUG - UserSettingsScreen: Email change completed, triggering refresh")
                 profileUpdateTrigger++
-                showChangeEmail = false
+                // Don't set showChangeEmail = false here, let the onBack handle navigation
+            },
+            authRepository = authRepository
+        )
+        return
+    }
+    
+    // Show ChangePasswordScreen if needed
+    if (showChangePassword) {
+        ChangePasswordScreen(
+            onBack = { showChangePassword = false },
+            onPasswordChanged = {
+                // Password was updated successfully - trigger refresh
+                println("🔍 DEBUG - UserSettingsScreen: Password change completed, triggering refresh")
+                profileUpdateTrigger++
+                // Don't set showChangePassword = false here, let the onBack handle navigation
             },
             authRepository = authRepository
         )
@@ -277,7 +293,7 @@ fun UserSettingsScreen(
                             icon = Icons.Default.Build,
                             title = "Change Password",
                             subtitle = "Update your login credentials",
-                            onClick = { /* TODO: Navigate to password change */ }
+                            onClick = { showChangePassword = true }
                         )
                     )
                 )
