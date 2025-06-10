@@ -8,10 +8,18 @@ import com.google.gson.Gson
 import com.jvn.myapplication.data.api.NetworkModule
 import com.jvn.myapplication.data.model.ErrorResponse
 import com.jvn.myapplication.data.model.LoginRequest
+import com.jvn.myapplication.data.model.LoginResponse
 import com.jvn.myapplication.data.model.RegisterRequest
 import com.jvn.myapplication.data.model.RegisterResponse
 import com.jvn.myapplication.data.model.User
 import com.jvn.myapplication.data.model.UserUpdateRequest
+import com.jvn.myapplication.data.model.TotpLoginRequest
+import com.jvn.myapplication.data.model.TwoFactorMethod
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.File
 
 import com.jvn.myapplication.utils.dataStore
 import kotlinx.coroutines.flow.Flow
@@ -31,29 +39,33 @@ class AuthRepository(private val context: Context) {
         private val FACE_2FA_ENABLED_KEY = booleanPreferencesKey("face_2fa_enabled")
     }
 
-    suspend fun login(email: String, password: String): Result<String> {
+    suspend fun login(email: String, password: String): Result<LoginResponse> {
         return try {
             val response = authApi.login(LoginRequest(email, password))
             if (response.isSuccessful && response.body() != null) {
                 val loginResponse = response.body()!!
-                if (loginResponse.success && loginResponse.access_token != null) {
-                    // CRITICAL FIX: Save the REAL user ID from API response
-                    saveAuthData(
-                        token = loginResponse.access_token,
-                        name = loginResponse.user.name,
-                        surname = loginResponse.user.surname,
-                        email = loginResponse.user.email,
-                        userId = loginResponse.user.id.toString(), // Use real ID: "3" not "user_john_doe_123"
-                        userType = loginResponse.user.userType
-                    )
+                if (loginResponse.success) {
+                    // Check if 2FA is required
+                    if (loginResponse.twoFactorRequired == true) {
+                        // Return the response with 2FA info (tempToken and available methods)
+                        println("🔍 DEBUG - AuthRepository: 2FA required, returning temp token")
+                        Result.success(loginResponse)
+                    } else if (loginResponse.access_token != null && loginResponse.user != null) {
+                        // Standard login - save auth data
+                        saveAuthData(
+                            token = loginResponse.access_token,
+                            name = loginResponse.user.name,
+                            surname = loginResponse.user.surname,
+                            email = loginResponse.user.email,
+                            userId = loginResponse.user.id.toString(),
+                            userType = loginResponse.user.userType
+                        )
 
-                    // Debug: Print what we're saving
-                    println("🔍 DEBUG - AuthRepository: Saving real user ID: ${loginResponse.user.id}")
-                    println("🔍 DEBUG - AuthRepository: Name: ${loginResponse.user.name}")
-                    println("🔍 DEBUG - AuthRepository: Email: ${loginResponse.user.email}")
-                    println("🔍 DEBUG - AuthRepository: UserType: ${loginResponse.user.userType}")
-
-                    Result.success("Login successful")
+                        println("🔍 DEBUG - AuthRepository: Standard login successful")
+                        Result.success(loginResponse)
+                    } else {
+                        Result.failure(Exception("Invalid login response"))
+                    }
                 } else {
                     Result.failure(Exception(loginResponse.message))
                 }
@@ -401,6 +413,111 @@ class AuthRepository(private val context: Context) {
             }
         } catch (e: Exception) {
             println("🔍 DEBUG - AuthRepository: Update exception: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    // 2FA Verification Methods
+    suspend fun verifyTotpLogin(tempToken: String, code: String): Result<LoginResponse> {
+        return try {
+            val request = TotpLoginRequest(tempToken, code)
+            val response = authApi.totpLogin(request)
+            
+            if (response.isSuccessful && response.body() != null) {
+                val totpResponse = response.body()!!
+                if (totpResponse.success) {
+                    // Save auth data after successful TOTP verification
+                    saveAuthData(
+                        token = totpResponse.access_token,
+                        name = totpResponse.user.name,
+                        surname = totpResponse.user.surname,
+                        email = totpResponse.user.email,
+                        userId = totpResponse.user.id.toString(),
+                        userType = totpResponse.user.userType
+                    )
+                    
+                    println("🔍 DEBUG - AuthRepository: TOTP verification successful")
+                    // Convert to LoginResponse for consistency
+                    val loginResponse = LoginResponse(
+                        success = totpResponse.success,
+                        message = totpResponse.message,
+                        access_token = totpResponse.access_token,
+                        user = totpResponse.user,
+                        twoFactorRequired = totpResponse.twoFactorRequired,
+                        tempToken = totpResponse.tempToken,
+                        available_2fa_methods = totpResponse.available_2fa_methods
+                    )
+                    Result.success(loginResponse)
+                } else {
+                    Result.failure(Exception(totpResponse.message))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string()
+                val errorMessage = try {
+                    val gson = Gson()
+                    val errorResponse = gson.fromJson(errorBody, ErrorResponse::class.java)
+                    errorResponse.message
+                } catch (e: Exception) {
+                    "TOTP verification failed: ${response.message()}"
+                }
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            println("🔍 DEBUG - AuthRepository: TOTP verification exception: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun verifyFaceLogin(tempToken: String, faceImageFile: File): Result<LoginResponse> {
+        return try {
+            // Create multipart request
+            val tempTokenBody = tempToken.toRequestBody("text/plain".toMediaTypeOrNull())
+            val faceImageBody = faceImageFile.asRequestBody("image/*".toMediaTypeOrNull())
+            val faceImagePart = MultipartBody.Part.createFormData("face_image", faceImageFile.name, faceImageBody)
+            
+            val response = authApi.faceLogin(tempTokenBody, faceImagePart)
+            
+            if (response.isSuccessful && response.body() != null) {
+                val faceResponse = response.body()!!
+                if (faceResponse.success) {
+                    // Save auth data after successful face verification
+                    saveAuthData(
+                        token = faceResponse.access_token,
+                        name = faceResponse.user.name,
+                        surname = faceResponse.user.surname,
+                        email = faceResponse.user.email,
+                        userId = faceResponse.user.id.toString(),
+                        userType = faceResponse.user.userType
+                    )
+                    
+                    println("🔍 DEBUG - AuthRepository: Face verification successful")
+                    // Convert to LoginResponse for consistency
+                    val loginResponse = LoginResponse(
+                        success = faceResponse.success,
+                        message = faceResponse.message,
+                        access_token = faceResponse.access_token,
+                        user = faceResponse.user,
+                        twoFactorRequired = faceResponse.twoFactorRequired,
+                        tempToken = faceResponse.tempToken,
+                        available_2fa_methods = faceResponse.available_2fa_methods
+                    )
+                    Result.success(loginResponse)
+                } else {
+                    Result.failure(Exception(faceResponse.message))
+                }
+            } else {
+                val errorBody = response.errorBody()?.string()
+                val errorMessage = try {
+                    val gson = Gson()
+                    val errorResponse = gson.fromJson(errorBody, ErrorResponse::class.java)
+                    errorResponse.message
+                } catch (e: Exception) {
+                    "Face verification failed: ${response.message()}"
+                }
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            println("🔍 DEBUG - AuthRepository: Face verification exception: ${e.message}")
             Result.failure(e)
         }
     }

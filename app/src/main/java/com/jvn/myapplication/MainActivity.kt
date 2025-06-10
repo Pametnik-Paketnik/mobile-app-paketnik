@@ -25,7 +25,7 @@ import com.jvn.myapplication.ui.auth.LoginApprovalScreen
 import com.jvn.myapplication.ui.main.AuthState
 import com.jvn.myapplication.ui.main.MainAuthViewModel
 import com.jvn.myapplication.ui.navigation.MainNavigation
-import com.jvn.myapplication.ui.face.LoginFaceVerificationScreen
+
 import com.jvn.myapplication.utils.FirebaseTestHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -226,19 +226,7 @@ fun Direct4meApp() {
                     }
                 )
             }
-            AuthState.REQUIRES_FACE_VERIFICATION -> {
-                // Show face verification screen for login
-                LoginFaceVerificationScreen(
-                    faceAuthRepository = faceAuthRepository,
-                    onVerificationSuccess = {
-                        mainAuthViewModel.completeFaceVerification()
-                    },
-                    onLogout = { 
-                        // User chooses to logout instead of verifying
-                        mainAuthViewModel.logout()
-                    }
-                )
-            }
+
             AuthState.AUTHENTICATED -> {
                 // Show main app with tab navigation
                 MainNavigation(

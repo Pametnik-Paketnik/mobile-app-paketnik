@@ -50,28 +50,24 @@ class MainAuthViewModel(
     }
 
     private suspend fun checkFaceVerificationRequirement() {
-        // Always check training status first to determine if user has face data
+        // Check training status to set face 2FA availability, but don't require verification here
+        // The new login flow handles all 2FA verification including face
         faceAuthRepository.getTrainingStatus()
             .onSuccess { statusResponse ->
                 if (statusResponse.status == "training_completed") {
-                    // User has trained face data - enable 2FA and require verification
+                    // User has trained face data - enable 2FA but proceed to authenticated state
                     authRepository.setFace2FAEnabled(true)
-                    _authState.value = AuthState.REQUIRES_FACE_VERIFICATION
                 } else {
-                    // User has no trained face data - disable 2FA and proceed
+                    // User has no trained face data - disable 2FA
                     authRepository.setFace2FAEnabled(false)
-                    _authState.value = AuthState.AUTHENTICATED
                 }
+                _authState.value = AuthState.AUTHENTICATED
             }
             .onFailure {
                 // If status check fails, assume no face data and disable 2FA
                 authRepository.setFace2FAEnabled(false)
                 _authState.value = AuthState.AUTHENTICATED
             }
-    }
-
-    fun completeFaceVerification() {
-        _authState.value = AuthState.AUTHENTICATED
     }
 
     fun skipFaceVerificationAndDisable2FA() {
@@ -93,6 +89,5 @@ class MainAuthViewModel(
 enum class AuthState {
     CHECKING,
     AUTHENTICATED,
-    UNAUTHENTICATED,
-    REQUIRES_FACE_VERIFICATION
+    UNAUTHENTICATED
 }
