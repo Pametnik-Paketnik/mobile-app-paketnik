@@ -2,6 +2,7 @@ package com.jvn.myapplication.data.api
 
 import retrofit2.Response
 import retrofit2.http.DELETE
+import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
 
@@ -16,6 +17,11 @@ data class TotpDisableResponse(
     val message: String
 )
 
+data class TotpStatusResponse(
+    val enabled: Boolean,
+    val message: String
+)
+
 interface TotpApiService {
     @POST("api/2fa/totp/setup")
     suspend fun setupTotp(
@@ -26,4 +32,9 @@ interface TotpApiService {
     suspend fun disableTotp(
         @Header("Authorization") token: String
     ): Response<TotpDisableResponse>
+
+    @GET("api/2fa/totp/status")
+    suspend fun getTotpStatus(
+        @Header("Authorization") token: String
+    ): Response<TotpStatusResponse>
 } 

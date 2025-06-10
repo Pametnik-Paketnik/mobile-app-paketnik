@@ -24,6 +24,10 @@ class SecuritySettingsViewModel(
     private val _isTotpEnabled = MutableStateFlow(false)
     val isTotpEnabled: StateFlow<Boolean> = _isTotpEnabled.asStateFlow()
 
+    init {
+        loadTotpStatus()
+    }
+
     fun enableFace2FA() {
         viewModelScope.launch {
             authRepository.setFace2FAEnabled(true)
@@ -135,6 +139,21 @@ class SecuritySettingsViewModel(
             showTotpSetup = false,
             totpSecret = null
         )
+    }
+
+    private fun loadTotpStatus() {
+        viewModelScope.launch {
+            totpRepository.getTotpStatus()
+                .onSuccess { statusResponse ->
+                    _isTotpEnabled.value = statusResponse.enabled
+                    println("🔍 DEBUG - SecuritySettingsViewModel: TOTP status loaded: ${statusResponse.enabled}")
+                }
+                .onFailure { exception ->
+                    println("🔍 DEBUG - SecuritySettingsViewModel: Failed to load TOTP status: ${exception.message}")
+                    // If we can't load status, assume it's disabled
+                    _isTotpEnabled.value = false
+                }
+        }
     }
 
     fun clearMessages() {

@@ -16,6 +16,18 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
+    init {
+        // Monitor auth token changes to reset state on logout
+        viewModelScope.launch {
+            authRepository.getAuthToken().collect { token ->
+                if (token.isNullOrEmpty()) {
+                    // Token cleared (logout), reset state
+                    _uiState.value = AuthUiState()
+                }
+            }
+        }
+    }
+
     fun login(email: String, password: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
@@ -160,6 +172,10 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
             errorMessage = null,
             successMessage = null
         )
+    }
+
+    fun resetState() {
+        _uiState.value = AuthUiState()
     }
 }
 
