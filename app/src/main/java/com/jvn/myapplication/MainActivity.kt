@@ -21,15 +21,14 @@ import com.jvn.myapplication.data.repository.AuthRepository
 import com.jvn.myapplication.data.repository.FaceAuthRepository
 import com.jvn.myapplication.ui.auth.AuthScreen
 import com.jvn.myapplication.ui.auth.AuthViewModel
-import com.jvn.myapplication.ui.auth.LoginApprovalScreen
+import com.jvn.myapplication.ui.screens.FaceAuth2FAScreen
 import com.jvn.myapplication.ui.main.AuthState
 import com.jvn.myapplication.ui.main.MainAuthViewModel
 import com.jvn.myapplication.ui.navigation.MainNavigation
-
-import com.jvn.myapplication.utils.FirebaseTestHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -38,18 +37,16 @@ import androidx.core.content.ContextCompat
 
 class MainActivity : ComponentActivity() {
     
-    private var _pendingLoginApproval = mutableStateOf<LoginApprovalData?>(null)
-    val pendingLoginApproval: State<LoginApprovalData?> = _pendingLoginApproval
+    private var _pendingFaceAuth2FA = mutableStateOf<FaceAuth2FAData?>(null)
+    val pendingFaceAuth2FA: State<FaceAuth2FAData?> = _pendingFaceAuth2FA
     
-    fun clearPendingLoginApproval() {
-        _pendingLoginApproval.value = null
+    fun clearPendingFaceAuth2FA() {
+        _pendingFaceAuth2FA.value = null
     }
     
-    data class LoginApprovalData(
-        val pendingAuthId: String,
-        val username: String,
-        val ip: String,
-        val location: String
+    data class FaceAuth2FAData(
+        val requestId: String,
+        val timestamp: String?
     )
     
     // Notification permission launcher
@@ -89,32 +86,45 @@ class MainActivity : ComponentActivity() {
     }
     
     private fun initializeFirebase() {
-        // Test Firebase setup
-        FirebaseTestHelper.logFirebaseInfo()
+        Log.d("FCM_2FA", "🔥 Initializing Firebase for 2FA...")
         
-        // Test Firebase setup in background
-        CoroutineScope(Dispatchers.IO).launch {
-            val isSetupSuccessful = FirebaseTestHelper.testFirebaseSetup(this@MainActivity)
-            Log.d("Firebase", if (isSetupSuccessful) "🎉 Firebase setup complete!" else "❌ Firebase setup failed!")
-        }
-        
+        // Get FCM token and register device with backend for 2FA notifications
         FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
             if (!task.isSuccessful) {
-                Log.w("FCM", "Fetching FCM registration token failed", task.exception)
+                Log.w("FCM_2FA", "❌ Fetching FCM registration token failed", task.exception)
                 return@addOnCompleteListener
             }
 
             // Get new FCM registration token
             val token = task.result
-            Log.d("FCM", "FCM Registration Token: $token")
+            Log.d("FCM_2FA", "📱 FCM Token: ${token.take(20)}...")
             
-            // Send token to backend
+            // Register device with backend for 2FA notifications
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     val authRepository = AuthRepository(this@MainActivity)
-                    authRepository.updateFcmToken(token)
+                    
+                    // Check if user is authenticated before registering device
+                    val authToken = authRepository.getAuthToken().first()
+                    if (!authToken.isNullOrEmpty()) {
+                        // User is authenticated, register device
+                        Log.d("FCM_2FA", "🔐 User authenticated, registering device...")
+                        
+                        val result = authRepository.registerDevice(token)
+                        result.onSuccess { deviceResponse ->
+                            Log.d("FCM_2FA", "✅ Device registration successful: ${deviceResponse.message}")
+                        }.onFailure { exception ->
+                            Log.e("FCM_2FA", "❌ Device registration failed: ${exception.message}")
+                            // Fallback to old FCM token update if device registration fails
+                            authRepository.updateFcmToken(token)
+                        }
+                    } else {
+                        // User not authenticated, just store token for later registration
+                        Log.d("FCM_2FA", "📝 User not authenticated, storing token for later registration")
+                        // We could store the token locally and register it after login
+                    }
                 } catch (e: Exception) {
-                    Log.e("FCM", "Failed to update FCM token", e)
+                    Log.e("FCM_2FA", "💥 Error during device registration: ${e.message}")
                 }
             }
         }
@@ -124,28 +134,13 @@ class MainActivity : ComponentActivity() {
         if (intent == null) return
         
         when (intent.action) {
-            "LOGIN_APPROVAL" -> {
-                val pendingAuthId = intent.getStringExtra("pendingAuthId")
-                val username = intent.getStringExtra("username")
-                val ip = intent.getStringExtra("ip")
-                val location = intent.getStringExtra("location")
+            "FACE_AUTH_REQUEST" -> {
+                val requestId = intent.getStringExtra("requestId")
+                val timestamp = intent.getStringExtra("timestamp")
                 
-                if (pendingAuthId != null && username != null && ip != null && location != null) {
-                    _pendingLoginApproval.value = LoginApprovalData(pendingAuthId, username, ip, location)
-                    Log.d("MainActivity", "🔔 Login approval request received for user: $username")
-                }
-            }
-            "LOGIN_APPROVAL_FACE_VERIFICATION" -> {
-                val pendingAuthId = intent.getStringExtra("pendingAuthId")
-                if (pendingAuthId != null) {
-                    // This will trigger face verification directly
-                    _pendingLoginApproval.value = LoginApprovalData(
-                        pendingAuthId = pendingAuthId,
-                        username = "Quick Approval",
-                        ip = "Unknown",
-                        location = "Unknown"
-                    )
-                    Log.d("MainActivity", "🔐 Quick face verification triggered")
+                if (requestId != null) {
+                    _pendingFaceAuth2FA.value = FaceAuth2FAData(requestId, timestamp)
+                    Log.d("MainActivity", "🔐 2FA Face auth request received: $requestId")
                 }
             }
         }
@@ -181,29 +176,28 @@ fun Direct4meApp() {
 
     val authState by mainAuthViewModel.authState.collectAsState()
     
-    // Get the activity to access pendingLoginApproval
+    // Get the activity to access pending 2FA face auth
     val activity = context as? MainActivity
-    val pendingApproval by (activity?.pendingLoginApproval ?: remember { mutableStateOf(null) })
+    val pendingFaceAuth by (activity?.pendingFaceAuth2FA ?: remember { mutableStateOf(null) })
 
     println("DEBUG: Current authState in UI: $authState")
-    println("DEBUG: Pending approval: $pendingApproval")
+    println("DEBUG: Pending 2FA Face Auth: $pendingFaceAuth")
 
-    // Check if we have a pending login approval to handle - show immediately regardless of auth state
-    val currentPendingApproval = pendingApproval
-    if (currentPendingApproval != null) {
-        LoginApprovalScreen(
-            pendingAuthId = currentPendingApproval.pendingAuthId,
-            username = currentPendingApproval.username,
-            ip = currentPendingApproval.ip,
-            location = currentPendingApproval.location,
-            faceAuthRepository = faceAuthRepository,
-            onApprovalComplete = {
-                // Clear the pending approval and return to main app
-                activity?.clearPendingLoginApproval()
+    // Check if we have a pending 2FA face auth request - show immediately regardless of auth state
+    val currentPendingFaceAuth = pendingFaceAuth
+    if (currentPendingFaceAuth != null) {
+        FaceAuth2FAScreen(
+            requestId = currentPendingFaceAuth.requestId,
+            timestamp = currentPendingFaceAuth.timestamp,
+            onAuthComplete = { success, message ->
+                Log.d("2FA", if (success) "✅ Face auth successful: $message" else "❌ Face auth failed: $message")
+                // Clear the pending 2FA request and return to main app
+                activity?.clearPendingFaceAuth2FA()
             },
-            onDeny = {
-                // Clear the pending approval and return to main app
-                activity?.clearPendingLoginApproval()
+            onCancel = {
+                Log.d("2FA", "❌ User cancelled face auth")
+                // Clear the pending 2FA request and return to main app
+                activity?.clearPendingFaceAuth2FA()
             }
         )
     } else {

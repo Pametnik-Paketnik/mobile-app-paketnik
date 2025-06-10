@@ -15,6 +15,8 @@ import com.jvn.myapplication.data.model.User
 import com.jvn.myapplication.data.model.UserUpdateRequest
 import com.jvn.myapplication.data.model.TotpLoginRequest
 import com.jvn.myapplication.data.model.TwoFactorMethod
+import com.jvn.myapplication.data.model.DeviceRegistrationRequest
+import com.jvn.myapplication.data.model.DeviceRegistrationResponse
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -25,6 +27,8 @@ import com.jvn.myapplication.utils.dataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.tasks.await
+import android.util.Log
 
 class AuthRepository(private val context: Context) {
     private val authApi = NetworkModule.authApi
@@ -214,6 +218,33 @@ class AuthRepository(private val context: Context) {
         // Verify what was saved
         val savedUserId = getUserId().first()
         println("🔍 DEBUG - AuthRepository.saveAuthData(): Verification - retrieved user ID: '$savedUserId'")
+        
+        // Register device for 2FA notifications after successful authentication
+        try {
+            val fcmToken = getCurrentFcmToken()
+            if (fcmToken != null) {
+                Log.d("AuthRepository", "🔐 Registering device after successful authentication...")
+                val result = registerDevice(fcmToken)
+                result.onSuccess { deviceResponse ->
+                    Log.d("AuthRepository", "✅ Post-login device registration successful")
+                }.onFailure { exception ->
+                    Log.e("AuthRepository", "❌ Post-login device registration failed: ${exception.message}")
+                }
+            } else {
+                Log.w("AuthRepository", "⚠️ No FCM token available for device registration")
+            }
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "💥 Error during post-login device registration: ${e.message}")
+        }
+    }
+    
+    private suspend fun getCurrentFcmToken(): String? {
+        return try {
+            com.google.firebase.messaging.FirebaseMessaging.getInstance().token.await()
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "Failed to get current FCM token: ${e.message}")
+            null
+        }
     }
 
     private fun generateUserId(username: String): String {
@@ -518,6 +549,63 @@ class AuthRepository(private val context: Context) {
             }
         } catch (e: Exception) {
             println("🔍 DEBUG - AuthRepository: Face verification exception: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    // Device registration for 2FA notifications
+    suspend fun registerDevice(fcmToken: String): Result<DeviceRegistrationResponse> {
+        return try {
+            val token = getAuthToken().first()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("No authentication token"))
+            }
+
+            Log.d("AuthRepository", "🔐 Registering device for 2FA notifications...")
+            
+            // Get device information
+            val deviceName = "${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}"
+            val deviceId = android.provider.Settings.Secure.getString(
+                context.contentResolver, 
+                android.provider.Settings.Secure.ANDROID_ID
+            )
+            val appVersion = try {
+                val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+                packageInfo.versionName
+            } catch (e: Exception) {
+                "1.0.0"
+            }
+
+            val request = DeviceRegistrationRequest(
+                fcmToken = fcmToken,
+                platform = "android",
+                deviceName = deviceName,
+                deviceId = deviceId,
+                appVersion = appVersion
+            )
+
+            Log.d("AuthRepository", "📱 Device Info - Name: $deviceName, ID: ${deviceId?.take(8)}..., Version: $appVersion")
+            
+            val response = authApi.registerDevice("Bearer $token", request)
+            
+            if (response.isSuccessful && response.body() != null) {
+                val deviceResponse = response.body()!!
+                Log.d("AuthRepository", "✅ Device registration successful: ${deviceResponse.message}")
+                Result.success(deviceResponse)
+            } else {
+                val errorBody = response.errorBody()?.string()
+                val errorMessage = try {
+                    val gson = Gson()
+                    val errorResponse = gson.fromJson(errorBody, ErrorResponse::class.java)
+                    errorResponse.message
+                } catch (e: Exception) {
+                    "Device registration failed: ${response.message()}"
+                }
+                Log.e("AuthRepository", "❌ Device registration failed: $errorMessage")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Log.e("AuthRepository", "💥 Device registration exception: ${e.message}")
             Result.failure(e)
         }
     }

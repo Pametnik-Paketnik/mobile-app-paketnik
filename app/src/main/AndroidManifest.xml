@@ -39,19 +39,9 @@
             </intent-filter>
         </service>
 
-        <!-- Broadcast Receiver for notification actions -->
-        <receiver
-            android:name=".services.LoginApprovalReceiver"
-            android:exported="false">
-            <intent-filter>
-                <action android:name="APPROVE_LOGIN" />
-                <action android:name="DENY_LOGIN" />
-            </intent-filter>
-        </receiver>
-
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="login_approval_channel" />
+            android:value="face_auth_channel" />
             
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"

@@ -11,6 +11,8 @@ import com.jvn.myapplication.data.model.User
 import com.jvn.myapplication.data.model.TotpLoginRequest
 import com.jvn.myapplication.data.model.TotpLoginResponse
 import com.jvn.myapplication.data.model.FaceLoginResponse
+import com.jvn.myapplication.data.model.DeviceRegistrationRequest
+import com.jvn.myapplication.data.model.DeviceRegistrationResponse
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import retrofit2.Response
@@ -31,6 +33,13 @@ interface AuthApiService {
 
     @POST("api/auth/logout")
     suspend fun logout(@Header("Authorization") token: String): Response<LogoutResponse>
+
+    // Device registration for 2FA notifications
+    @POST("api/users/devices")
+    suspend fun registerDevice(
+        @Header("Authorization") token: String,
+        @Body request: DeviceRegistrationRequest
+    ): Response<DeviceRegistrationResponse>
 
     // Push notification endpoints for 2FA
     @POST("api/auth/update-fcm-token")
