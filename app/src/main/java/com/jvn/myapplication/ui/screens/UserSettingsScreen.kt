@@ -20,13 +20,16 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jvn.myapplication.data.repository.AuthRepository
 import com.jvn.myapplication.data.repository.FaceAuthRepository
+import com.jvn.myapplication.data.repository.TotpRepository
 import com.jvn.myapplication.ui.face.FaceAuthScreen
 import com.jvn.myapplication.ui.face.FaceAuthViewModel
 
@@ -97,10 +100,11 @@ fun UserSettingsScreen(
     val textDark = Color(0xFF484848)
     val textLight = Color(0xFF767676)
     val faceAuthRepository = remember { FaceAuthRepository(context) }
+    val totpRepository = remember { TotpRepository(authRepository) }
 
     // ViewModels
     val securitySettingsViewModel: SecuritySettingsViewModel = viewModel {
-        SecuritySettingsViewModel(authRepository, faceAuthRepository)
+        SecuritySettingsViewModel(authRepository, faceAuthRepository, totpRepository)
     }
 
     // Animation state
@@ -309,12 +313,22 @@ fun UserSettingsScreen(
             ) {
                 SecurityPrivacySection(
                     faceVerificationEnabled = faceVerificationEnabled,
+                    totpEnabled = securitySettingsViewModel.isTotpEnabled.collectAsState().value,
                     isDeleting = securityUiState.isDeleting,
+                    isSettingUpTotp = securityUiState.isSettingUpTotp,
+                    isDisablingTotp = securityUiState.isDisablingTotp,
                     onToggleFaceVerification = { enabled ->
                         if (enabled) {
                             showFaceVerification = true
                         } else {
                             securitySettingsViewModel.disableFace2FA()
+                        }
+                    },
+                    onToggleTotp = { enabled ->
+                        if (enabled) {
+                            securitySettingsViewModel.setupTotp()
+                        } else {
+                            securitySettingsViewModel.disableTotp()
                         }
                     }
                 )
@@ -423,6 +437,100 @@ fun UserSettingsScreen(
             }
         )
     }
+
+    // TOTP Setup Dialog
+    if (securityUiState.showTotpSetup && securityUiState.totpSecret != null) {
+        val clipboardManager = LocalClipboardManager.current
+        
+        AlertDialog(
+            onDismissRequest = { securitySettingsViewModel.dismissTotpSetup() },
+            title = {
+                Text(
+                    text = "TOTP Setup",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = textDark
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "Add this Key to your authenticator app:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = textDark,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = lightGray),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = securityUiState.totpSecret!!,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = textDark,
+                                modifier = Modifier.weight(1f)
+                            )
+                            
+                            Spacer(modifier = Modifier.width(8.dp))
+                            
+                            IconButton(
+                                onClick = {
+                                    clipboardManager.setText(AnnotatedString(securityUiState.totpSecret!!))
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Copy to clipboard",
+                                    tint = airbnbRed,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "• Open Google Authenticator, Authy, or any other TOTP app\n" +
+                                "• Add a new account manually\n" +
+                                "• Enter the Key shown above\n" +
+                                "• Your app will generate 6-digit codes every 30 seconds",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = textLight
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { securitySettingsViewModel.dismissTotpSetup() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = airbnbRed,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = "Done",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            containerColor = cardWhite,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
 }
 
 @Composable
@@ -523,8 +631,12 @@ private fun SettingsItemRow(item: SettingsItem) {
 @Composable
 private fun SecurityPrivacySection(
     faceVerificationEnabled: Boolean,
+    totpEnabled: Boolean,
     isDeleting: Boolean,
-    onToggleFaceVerification: (Boolean) -> Unit
+    isSettingUpTotp: Boolean,
+    isDisablingTotp: Boolean,
+    onToggleFaceVerification: (Boolean) -> Unit,
+    onToggleTotp: (Boolean) -> Unit
 ) {
     val airbnbRed = Color(0xFFFF5A5F)
     val cardWhite = Color(0xFFFFFFFF)
@@ -602,6 +714,71 @@ private fun SecurityPrivacySection(
                     checked = faceVerificationEnabled,
                     onCheckedChange = onToggleFaceVerification,
                     enabled = !isDeleting,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = Color.White,
+                        checkedTrackColor = successGreen,
+                        uncheckedThumbColor = Color.White,
+                        uncheckedTrackColor = Color.Gray.copy(alpha = 0.4f)
+                    )
+                )
+            }
+
+            // Divider
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp),
+                color = Color.Gray.copy(alpha = 0.2f)
+            )
+
+            // TOTP Toggle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                airbnbRed.copy(alpha = 0.1f),
+                                RoundedCornerShape(10.dp)
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = null,
+                            tint = airbnbRed,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text(
+                            text = "TOTP (2FA)",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.Medium,
+                            color = textDark
+                        )
+                        Text(
+                            text = "Use Google Authenticator or other TOTP apps",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = textLight
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Switch(
+                    checked = totpEnabled,
+                    onCheckedChange = onToggleTotp,
+                    enabled = !isSettingUpTotp && !isDisablingTotp,
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
                         checkedTrackColor = successGreen,

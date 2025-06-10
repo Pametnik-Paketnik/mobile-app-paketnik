@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jvn.myapplication.data.repository.AuthRepository
 import com.jvn.myapplication.data.repository.FaceAuthRepository
+import com.jvn.myapplication.data.repository.TotpRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -11,13 +12,17 @@ import kotlinx.coroutines.launch
 
 class SecuritySettingsViewModel(
     private val authRepository: AuthRepository,
-    private val faceAuthRepository: FaceAuthRepository
+    private val faceAuthRepository: FaceAuthRepository,
+    private val totpRepository: TotpRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SecuritySettingsUiState())
     val uiState: StateFlow<SecuritySettingsUiState> = _uiState.asStateFlow()
 
     val isFace2FAEnabled = authRepository.isFace2FAEnabled()
+    
+    private val _isTotpEnabled = MutableStateFlow(false)
+    val isTotpEnabled: StateFlow<Boolean> = _isTotpEnabled.asStateFlow()
 
     fun enableFace2FA() {
         viewModelScope.launch {
@@ -80,6 +85,58 @@ class SecuritySettingsViewModel(
         return hasTrainedFaceData
     }
 
+    fun setupTotp() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSettingUpTotp = true)
+            
+            totpRepository.setupTotp()
+                .onSuccess { totpResponse ->
+                    _isTotpEnabled.value = true
+                    _uiState.value = _uiState.value.copy(
+                        isSettingUpTotp = false,
+                        totpSecret = totpResponse.secret,
+                        showTotpSetup = true
+                    )
+                }
+                .onFailure { exception ->
+                    _uiState.value = _uiState.value.copy(
+                        isSettingUpTotp = false,
+                        errorMessage = exception.message ?: "Failed to setup TOTP"
+                    )
+                }
+        }
+    }
+
+    fun disableTotp() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isDisablingTotp = true)
+            
+            totpRepository.disableTotp()
+                .onSuccess { response ->
+                    _isTotpEnabled.value = false
+                    _uiState.value = _uiState.value.copy(
+                        isDisablingTotp = false,
+                        totpSecret = null,
+                        showTotpSetup = false,
+                        successMessage = response.message
+                    )
+                }
+                .onFailure { exception ->
+                    _uiState.value = _uiState.value.copy(
+                        isDisablingTotp = false,
+                        errorMessage = exception.message ?: "Failed to disable TOTP"
+                    )
+                }
+        }
+    }
+
+    fun dismissTotpSetup() {
+        _uiState.value = _uiState.value.copy(
+            showTotpSetup = false,
+            totpSecret = null
+        )
+    }
+
     fun clearMessages() {
         _uiState.value = _uiState.value.copy(
             errorMessage = null,
@@ -92,6 +149,10 @@ data class SecuritySettingsUiState(
     val isDeleting: Boolean = false,
     val isCheckingStatus: Boolean = false,
     val requiresFaceVerification: Boolean = false,
+    val isSettingUpTotp: Boolean = false,
+    val isDisablingTotp: Boolean = false,
+    val showTotpSetup: Boolean = false,
+    val totpSecret: String? = null,
     val errorMessage: String? = null,
     val successMessage: String? = null
 ) 
