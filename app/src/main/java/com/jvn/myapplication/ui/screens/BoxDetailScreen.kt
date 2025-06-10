@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.jvn.myapplication.data.model.BoxData
+import com.jvn.myapplication.data.model.UnavailableDateRange
 import com.jvn.myapplication.data.repository.BoxRepository
 import com.jvn.myapplication.data.repository.AuthRepository
 import com.jvn.myapplication.data.repository.ReservationRepository
@@ -62,6 +63,7 @@ fun BoxDetailScreen(
     var selectedStartTime by remember { mutableStateOf(LocalTime.of(15, 0)) } // Default 3 PM check-in
     var selectedEndTime by remember { mutableStateOf(LocalTime.of(11, 0)) } // Default 11 AM check-out
     var unavailableDates by remember { mutableStateOf<Set<LocalDate>>(emptySet()) }
+    var unavailablePeriodsText by remember { mutableStateOf("") }
     var showDateRangePicker by remember { mutableStateOf(false) }
     var isLoadingAvailability by remember { mutableStateOf(false) }
     
@@ -90,6 +92,38 @@ fun BoxDetailScreen(
     }
 
     val dateFormatter = DateTimeFormatter.ofPattern("dd MMM yyyy")
+    
+    // Function to format unavailable periods into readable text
+    fun formatUnavailablePeriods(unavailableDateRanges: List<UnavailableDateRange>): String {
+        val activeRanges = unavailableDateRanges.filter { dateRange ->
+            when (dateRange.status.uppercase()) {
+                "PENDING", "CHECKED_IN", "BOOKED", "CONFIRMED" -> true
+                "CHECKED_OUT", "COMPLETED", "CANCELLED" -> false
+                else -> true
+            }
+        }
+        
+        if (activeRanges.isEmpty()) return ""
+        
+        val formattedPeriods = activeRanges.mapNotNull { dateRange ->
+            try {
+                val startDate = LocalDate.parse(dateRange.startDate.take(10))
+                val endDate = LocalDate.parse(dateRange.endDate.take(10))
+                
+                if (startDate == endDate) {
+                    // Single day
+                    startDate.format(dateFormatter)
+                } else {
+                    // Date range
+                    "${startDate.format(dateFormatter)} - ${endDate.format(dateFormatter)}"
+                }
+            } catch (e: Exception) {
+                null
+            }
+        }
+        
+        return formattedPeriods.joinToString("\n")
+    }
     
     // Load availability when screen opens
     LaunchedEffect(box.boxId) {
@@ -137,11 +171,13 @@ fun BoxDetailScreen(
                         }
                         
                         unavailableDates = allUnavailableDates
+                        unavailablePeriodsText = formatUnavailablePeriods(availability.unavailableDates)
                         println("🔍 DEBUG - BoxDetailScreen: Loaded ${unavailableDates.size} unavailable dates")
                     },
                     onFailure = { exception ->
                         println("🔍 DEBUG - BoxDetailScreen: Error loading availability: ${exception.message}")
                         unavailableDates = emptySet()
+                        unavailablePeriodsText = ""
                         isCurrentlyUnavailable = false
                     }
                 )
@@ -367,23 +403,46 @@ fun BoxDetailScreen(
                             }
                         }
                         
-                        // Availability legend
-                        if (unavailableDates.isNotEmpty()) {
+
+                        
+                        // Display unavailable periods in text format
+                        if (unavailablePeriodsText.isNotEmpty()) {
                             Spacer(modifier = Modifier.height(12.dp))
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3F3)),
+                                shape = RoundedCornerShape(8.dp)
                             ) {
-                                Box(
+                                Column(
                                     modifier = Modifier
-                                        .size(12.dp)
-                                        .background(Color.Red, RoundedCornerShape(2.dp))
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    "Unavailable dates",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = textLight
-                                )
+                                        .fillMaxWidth()
+                                        .padding(12.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Info,
+                                            contentDescription = null,
+                                            tint = Color(0xFFD32F2F),
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(
+                                            text = "Unavailable Dates",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = Color(0xFFD32F2F),
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = unavailablePeriodsText,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color(0xFF8B0000),
+                                        lineHeight = MaterialTheme.typography.bodySmall.lineHeight * 1.4
+                                    )
+                                }
                             }
                         }
                         
