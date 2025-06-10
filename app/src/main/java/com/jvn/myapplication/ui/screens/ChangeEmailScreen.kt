@@ -1,5 +1,6 @@
 package com.jvn.myapplication.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -16,6 +17,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -26,52 +28,38 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jvn.myapplication.data.repository.AuthRepository
 import kotlinx.coroutines.delay
-import android.widget.Toast
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileEditScreen(
+fun ChangeEmailScreen(
     onBack: () -> Unit = {},
-    onProfileUpdated: () -> Unit = {}
+    onEmailChanged: () -> Unit = {},
+    authRepository: AuthRepository
 ) {
-    // Airbnb-style color palette
-    val airbnbRed = Color(0xFFFF5A5F)
-    val lightGray = Color(0xFFF7F7F7)
-    val cardWhite = Color(0xFFFFFFFF)
-    val textDark = Color(0xFF484848)
-    val textLight = Color(0xFF767676)
-
     val context = LocalContext.current
-    val authRepository = remember { AuthRepository(context) }
-
-    // ViewModels
-    val profileEditViewModel: ProfileEditViewModel = viewModel {
-        ProfileEditViewModel(authRepository)
+    val changeEmailViewModel: ChangeEmailViewModel = viewModel {
+        ChangeEmailViewModel(authRepository)
     }
-
+    
     // State variables
     var isContentVisible by remember { mutableStateOf(false) }
     
     // User data
     val userId by authRepository.getUserId().collectAsState(initial = null)
+    val currentEmail by authRepository.getEmail().collectAsState(initial = null)
     val currentName by authRepository.getName().collectAsState(initial = null)
     val currentSurname by authRepository.getSurname().collectAsState(initial = null)
-    val currentEmail by authRepository.getEmail().collectAsState(initial = null)
     val currentUserType by authRepository.getUserType().collectAsState(initial = null)
     
     // Form state
-    var name by remember { mutableStateOf("") }
-    var surname by remember { mutableStateOf("") }
+    var newEmail by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     
     // UI state
-    val uiState by profileEditViewModel.uiState.collectAsState()
+    val uiState by changeEmailViewModel.uiState.collectAsState()
 
-    // Initialize form with current data and reset success state
-    LaunchedEffect(currentName, currentSurname) {
-        if (currentName != null) name = currentName!!
-        if (currentSurname != null) surname = currentSurname!!
-        profileEditViewModel.resetSuccessState() // Reset success state when screen opens
+    // Initialize form
+    LaunchedEffect(Unit) {
         delay(200)
         isContentVisible = true
     }
@@ -80,21 +68,34 @@ fun ProfileEditScreen(
     LaunchedEffect(uiState.isUpdateSuccessful) {
         if (uiState.isUpdateSuccessful) {
             // Show toast notification
-            Toast.makeText(context, "Profile updated successfully!", Toast.LENGTH_SHORT).show()
-            delay(500) // Shorter delay so user sees the toast
-            onProfileUpdated()
+            Toast.makeText(context, "Email changed successfully!", Toast.LENGTH_SHORT).show()
+            delay(500)
+            onEmailChanged()
             onBack()
         }
     }
+
+    // Clear messages and reset success state when screen appears
+    LaunchedEffect(Unit) {
+        changeEmailViewModel.clearMessages()
+        changeEmailViewModel.resetSuccessState()
+    }
+
+    // Airbnb-style color palette (matching ProfileEditScreen)
+    val airbnbRed = Color(0xFFFF5A5F)
+    val lightGray = Color(0xFFF7F7F7)
+    val cardWhite = Color(0xFFFFFFFF)
+    val textDark = Color(0xFF484848)
+    val textLight = Color(0xFF767676)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(lightGray)
     ) {
-        // Top Bar
+        // Top Bar (matching ProfileEditScreen)
         TopAppBar(
-            title = { Text("Edit Profile") },
+            title = { Text("Change Email") },
             navigationIcon = {
                 IconButton(onClick = onBack) {
                     Icon(
@@ -110,7 +111,7 @@ fun ProfileEditScreen(
             )
         )
 
-        // Content
+        // Content (matching ProfileEditScreen)
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -120,7 +121,7 @@ fun ProfileEditScreen(
         ) {
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Profile Edit Form
+            // Email Change Form
             AnimatedVisibility(
                 visible = isContentVisible,
                 enter = slideInVertically(
@@ -141,18 +142,27 @@ fun ProfileEditScreen(
                             .padding(24.dp)
                     ) {
                         Text(
-                            text = "Personal Information",
+                            text = "Email Address",
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             color = textDark,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                        
+                        Text(
+                            text = "Current email: ${currentEmail ?: "Not available"}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = textLight,
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
-
-                        // Name field
+                        // New Email field
                         OutlinedTextField(
-                            value = name,
-                            onValueChange = { name = it },
-                            label = { Text("First Name") },
+                            value = newEmail,
+                            onValueChange = { 
+                                newEmail = it
+                                changeEmailViewModel.clearMessages()
+                            },
+                            label = { Text("New Email Address") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
                             shape = RoundedCornerShape(12.dp),
@@ -160,23 +170,7 @@ fun ProfileEditScreen(
                                 focusedBorderColor = airbnbRed,
                                 focusedLabelColor = airbnbRed
                             ),
-                            enabled = !uiState.isLoading
-                        )
-
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        // Surname field
-                        OutlinedTextField(
-                            value = surname,
-                            onValueChange = { surname = it },
-                            label = { Text("Last Name") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = airbnbRed,
-                                focusedLabelColor = airbnbRed
-                            ),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                             enabled = !uiState.isLoading
                         )
 
@@ -191,7 +185,7 @@ fun ProfileEditScreen(
                         )
 
                         Text(
-                            text = "To save changes, please confirm your current password",
+                            text = "To change your email, please confirm your current password",
                             style = MaterialTheme.typography.bodyMedium,
                             color = textLight,
                             modifier = Modifier.padding(bottom = 16.dp)
@@ -200,7 +194,10 @@ fun ProfileEditScreen(
                         // Password confirmation field
                         OutlinedTextField(
                             value = confirmPassword,
-                            onValueChange = { confirmPassword = it },
+                            onValueChange = { 
+                                confirmPassword = it
+                                changeEmailViewModel.clearMessages()
+                            },
                             label = { Text("Current Password") },
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true,
@@ -215,7 +212,7 @@ fun ProfileEditScreen(
                             isError = uiState.passwordError != null
                         )
 
-                        // Password error
+                        // Password error (matching ProfileEditScreen style)
                         uiState.passwordError?.let { error ->
                             Spacer(modifier = Modifier.height(4.dp))
                             Text(
@@ -225,22 +222,43 @@ fun ProfileEditScreen(
                             )
                         }
 
+                        // General error message
+                        uiState.errorMessage?.let { error ->
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+                                )
+                            ) {
+                                Text(
+                                    text = error,
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(24.dp))
 
-                        // Save button
+                        // Save button (matching ProfileEditScreen)
                         Button(
                             onClick = {
                                 val userIdValue = userId
-                                val emailValue = currentEmail
-                                val userTypeValue = currentUserType
-                                if (userIdValue != null && emailValue != null && userTypeValue != null) {
-                                    profileEditViewModel.updateProfile(
+                                val currentNameValue = currentName
+                                val currentSurnameValue = currentSurname
+                                val currentUserTypeValue = currentUserType
+                                
+                                if (userIdValue != null && currentNameValue != null && 
+                                    currentSurnameValue != null && currentUserTypeValue != null) {
+                                    changeEmailViewModel.changeEmail(
                                         userId = userIdValue.toInt(),
-                                        name = name,
-                                        surname = surname,
-                                        email = emailValue,
-                                        confirmPassword = confirmPassword,
-                                        userType = userTypeValue
+                                        newEmail = newEmail,
+                                        currentName = currentNameValue,
+                                        currentSurname = currentSurnameValue,
+                                        currentUserType = currentUserTypeValue,
+                                        confirmPassword = confirmPassword
                                     )
                                 }
                             },
@@ -250,10 +268,9 @@ fun ProfileEditScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = airbnbRed),
                             shape = RoundedCornerShape(16.dp),
                             enabled = !uiState.isLoading && 
-                                    name.isNotBlank() && 
-                                    surname.isNotBlank() && 
+                                    newEmail.isNotBlank() && 
                                     confirmPassword.isNotBlank() &&
-                                    (name != currentName || surname != currentSurname)
+                                    newEmail != currentEmail
                         ) {
                             if (uiState.isLoading) {
                                 Row(
@@ -265,87 +282,37 @@ fun ProfileEditScreen(
                                         strokeWidth = 2.dp
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Saving...")
+                                    Text("Changing Email...")
                                 }
                             } else {
                                 Text(
-                                    "Save Changes",
+                                    "Change Email",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
                         }
 
-                        // Success message
+                        // Success message (matching ProfileEditScreen)
                         uiState.successMessage?.let { message ->
                             Spacer(modifier = Modifier.height(16.dp))
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(
                                     containerColor = Color(0xFF4CAF50).copy(alpha = 0.1f)
-                                ),
-                                shape = RoundedCornerShape(12.dp)
+                                )
                             ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        tint = Color(0xFF4CAF50),
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = message,
-                                        color = Color(0xFF4CAF50),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                            }
-                        }
-
-                        // Error message
-                        uiState.errorMessage?.let { error ->
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-                                ),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Warning,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        text = error,
-                                        color = MaterialTheme.colorScheme.error,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
+                                Text(
+                                    text = message,
+                                    color = Color(0xFF4CAF50),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(16.dp)
+                                )
                             }
                         }
                     }
                 }
             }
-            
-            Spacer(modifier = Modifier.height(24.dp))
         }
     }
 } 

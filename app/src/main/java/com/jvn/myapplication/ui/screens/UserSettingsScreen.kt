@@ -35,8 +35,13 @@ import com.jvn.myapplication.ui.face.FaceAuthViewModel
 fun UserSettingsScreen(
     onLogout: () -> Unit = {}
 ) {
+    // Initialize dependencies first
+    val context = LocalContext.current
+    val authRepository = remember { AuthRepository(context) }
+    
     // State for navigation
     var showProfileEdit by remember { mutableStateOf(false) }
+    var showChangeEmail by remember { mutableStateOf(false) }
     var profileUpdateTrigger by remember { mutableStateOf(0) }
     
     // Show ProfileEditScreen if needed
@@ -52,6 +57,22 @@ fun UserSettingsScreen(
         )
         return
     }
+    
+    // Show ChangeEmailScreen if needed
+    if (showChangeEmail) {
+        ChangeEmailScreen(
+            onBack = { showChangeEmail = false },
+            onEmailChanged = {
+                // Email was updated successfully - trigger refresh
+                println("🔍 DEBUG - UserSettingsScreen: Email change completed, triggering refresh")
+                profileUpdateTrigger++
+                showChangeEmail = false
+            },
+            authRepository = authRepository
+        )
+        return
+    }
+    
     // Airbnb-style color palette
     val airbnbRed = Color(0xFFFF5A5F)
     val darkGray = Color(0xFF484848)
@@ -59,9 +80,6 @@ fun UserSettingsScreen(
     val cardWhite = Color(0xFFFFFFFF)
     val textDark = Color(0xFF484848)
     val textLight = Color(0xFF767676)
-
-    val context = LocalContext.current
-    val authRepository = remember { AuthRepository(context) }
     val faceAuthRepository = remember { FaceAuthRepository(context) }
 
     // ViewModels
@@ -253,7 +271,7 @@ fun UserSettingsScreen(
                             icon = Icons.Default.Edit,
                             title = "Change Email",
                             subtitle = "Update your email address",
-                            onClick = { /* TODO: Navigate to email change */ }
+                            onClick = { showChangeEmail = true }
                         ),
                         SettingsItem(
                             icon = Icons.Default.Build,

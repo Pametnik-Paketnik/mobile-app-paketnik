@@ -85,6 +85,12 @@ class ProfileEditViewModel(
             passwordError = null
         )
     }
+
+    fun resetSuccessState() {
+        _uiState.value = _uiState.value.copy(
+            isUpdateSuccessful = false
+        )
+    }
 }
 
 data class ProfileEditUiState(
