@@ -35,6 +35,23 @@ import com.jvn.myapplication.ui.face.FaceAuthViewModel
 fun UserSettingsScreen(
     onLogout: () -> Unit = {}
 ) {
+    // State for navigation
+    var showProfileEdit by remember { mutableStateOf(false) }
+    var profileUpdateTrigger by remember { mutableStateOf(0) }
+    
+    // Show ProfileEditScreen if needed
+    if (showProfileEdit) {
+        ProfileEditScreen(
+            onBack = { showProfileEdit = false },
+            onProfileUpdated = { 
+                // Profile was updated successfully - trigger refresh
+                println("🔍 DEBUG - UserSettingsScreen: Profile update completed, triggering refresh")
+                profileUpdateTrigger++
+                showProfileEdit = false
+            }
+        )
+        return
+    }
     // Airbnb-style color palette
     val airbnbRed = Color(0xFFFF5A5F)
     val darkGray = Color(0xFF484848)
@@ -57,18 +74,47 @@ fun UserSettingsScreen(
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showFaceVerification by remember { mutableStateOf(false) }
 
-    // User data
-    val userId by authRepository.getUserId().collectAsState(initial = null)
-    val name by authRepository.getName().collectAsState(initial = null)
-    val surname by authRepository.getSurname().collectAsState(initial = null)
-    val email by authRepository.getEmail().collectAsState(initial = null)
-    val userType by authRepository.getUserType().collectAsState(initial = null)
+    // User data - will refresh when profileUpdateTrigger changes
+    var userId by remember { mutableStateOf<String?>(null) }
+    var name by remember { mutableStateOf<String?>(null) }
+    var surname by remember { mutableStateOf<String?>(null) }
+    var email by remember { mutableStateOf<String?>(null) }
+    var userType by remember { mutableStateOf<String?>(null) }
+    
+    // Load user data and refresh when triggered
+    LaunchedEffect(profileUpdateTrigger) {
+        authRepository.getUserId().collect { userId = it }
+    }
+    
+    LaunchedEffect(profileUpdateTrigger) {
+        authRepository.getName().collect { 
+            println("🔍 DEBUG - UserSettingsScreen: Name updated to: '$it'")
+            name = it 
+        }
+    }
+    
+    LaunchedEffect(profileUpdateTrigger) {
+        authRepository.getSurname().collect { 
+            println("🔍 DEBUG - UserSettingsScreen: Surname updated to: '$it'")
+            surname = it 
+        }
+    }
+    
+    LaunchedEffect(profileUpdateTrigger) {
+        authRepository.getEmail().collect { email = it }
+    }
+    
+    LaunchedEffect(profileUpdateTrigger) {
+        authRepository.getUserType().collect { userType = it }
+    }
+    
+
     
     // Face verification state
     val faceVerificationEnabled by securitySettingsViewModel.isFace2FAEnabled.collectAsState(initial = false)
     val securityUiState by securitySettingsViewModel.uiState.collectAsState()
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(Unit, profileUpdateTrigger) {
         kotlinx.coroutines.delay(200)
         isContentVisible = true
     }
@@ -201,7 +247,7 @@ fun UserSettingsScreen(
                             icon = Icons.Default.Person,
                             title = "Profile Information",
                             subtitle = "Edit your personal details",
-                            onClick = { /* TODO: Navigate to profile edit */ }
+                            onClick = { showProfileEdit = true }
                         ),
                         SettingsItem(
                             icon = Icons.Default.Edit,

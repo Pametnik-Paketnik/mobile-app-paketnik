@@ -6,10 +6,14 @@ import com.jvn.myapplication.data.model.LoginResponse
 import com.jvn.myapplication.data.model.LogoutResponse
 import com.jvn.myapplication.data.model.RegisterRequest
 import com.jvn.myapplication.data.model.RegisterResponse
+import com.jvn.myapplication.data.model.UserUpdateRequest
+import com.jvn.myapplication.data.model.User
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.PATCH
+import retrofit2.http.Path
 
 interface AuthApiService {
     @POST("api/auth/login")
@@ -39,4 +43,11 @@ interface AuthApiService {
         @Header("Authorization") token: String,
         @Body request: Map<String, String>
     ): Response<Map<String, Any>>
+
+    @PATCH("api/users/{id}")
+    suspend fun updateUser(
+        @Path("id") userId: Int,
+        @Header("Authorization") token: String,
+        @Body request: UserUpdateRequest
+    ): Response<User>
 }

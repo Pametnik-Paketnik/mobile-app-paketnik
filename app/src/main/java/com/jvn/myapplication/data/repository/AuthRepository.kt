@@ -11,6 +11,8 @@ import com.jvn.myapplication.data.model.LoginRequest
 import com.jvn.myapplication.data.model.RegisterRequest
 import com.jvn.myapplication.data.model.RegisterResponse
 import com.jvn.myapplication.data.model.User
+import com.jvn.myapplication.data.model.UserUpdateRequest
+
 import com.jvn.myapplication.utils.dataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -328,6 +330,78 @@ class AuthRepository(private val context: Context) {
             }
         } else {
             throw Exception("Not authenticated")
+        }
+    }
+
+    // Method to verify password by attempting login
+    suspend fun verifyPassword(email: String, password: String): Result<Boolean> {
+        return try {
+            val response = authApi.login(LoginRequest(email, password))
+            if (response.isSuccessful && response.body() != null) {
+                val loginResponse = response.body()!!
+                Result.success(loginResponse.success)
+            } else {
+                Result.success(false)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // Method to update user profile
+    suspend fun updateUserProfile(
+        userId: Int,
+        name: String,
+        surname: String,
+        email: String,
+        password: String,
+        userType: String
+    ): Result<User> {
+        return try {
+            val token = getAuthToken().first()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("No authentication token"))
+            }
+
+            val request = UserUpdateRequest(
+                name = name,
+                surname = surname,
+                email = email,
+                password = password,
+                userType = userType
+            )
+
+            val response = authApi.updateUser(userId, "Bearer $token", request)
+            if (response.isSuccessful && response.body() != null) {
+                val updatedUser = response.body()!!
+                println("🔍 DEBUG - AuthRepository: Profile update successful, saving to DataStore")
+                
+                // Update local data store with new information
+                saveAuthData(
+                    token = token,
+                    name = updatedUser.name,
+                    surname = updatedUser.surname,
+                    email = updatedUser.email,
+                    userId = updatedUser.id.toString(),
+                    userType = updatedUser.userType
+                )
+                
+                Result.success(updatedUser)
+            } else {
+                println("🔍 DEBUG - AuthRepository: Update failed with code: ${response.code()}")
+                val errorBody = response.errorBody()?.string()
+                val errorMessage = try {
+                    val gson = Gson()
+                    val errorResponse = gson.fromJson(errorBody, ErrorResponse::class.java)
+                    errorResponse.message
+                } catch (e: Exception) {
+                    "Update failed: ${response.message()}"
+                }
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            println("🔍 DEBUG - AuthRepository: Update exception: ${e.message}")
+            Result.failure(e)
         }
     }
 }
