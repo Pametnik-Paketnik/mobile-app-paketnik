@@ -10,7 +10,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
-import retrofit2.http.PUT
+import retrofit2.http.PATCH
 import retrofit2.http.Path
 
 data class CreateReservationRequest(
@@ -80,7 +80,7 @@ interface ReservationApiService {
         @Header("Authorization") token: String
     ): Response<ReservationResponse>
 
-    @PUT("api/reservations/{id}")
+    @PATCH("api/reservations/{id}")
     suspend fun updateReservation(
         @Path("id") id: String,
         @Header("Authorization") token: String,

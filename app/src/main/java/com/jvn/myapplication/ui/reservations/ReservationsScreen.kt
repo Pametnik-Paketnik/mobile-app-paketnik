@@ -1,5 +1,10 @@
 package com.jvn.myapplication.ui.reservations
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -16,19 +21,24 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jvn.myapplication.data.model.Reservation
 import com.jvn.myapplication.data.repository.AuthRepository
 import com.jvn.myapplication.data.repository.ReservationRepository
+import com.jvn.myapplication.data.repository.BoxRepository
+import com.jvn.myapplication.ui.main.QRCodeScanner
 import com.jvn.myapplication.ui.screens.OpenBoxScreen
 import com.jvn.myapplication.ui.screens.OrderHistoryScreen
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,11 +53,22 @@ fun ReservationsScreen() {
     val context = LocalContext.current
     val authRepository = remember { AuthRepository(context) }
     val reservationRepository = remember { ReservationRepository(context) }
+    val boxRepository = remember { BoxRepository(context) }
+
+    // UserBoxOpenViewModel for QR scanning and box opening
+    val userBoxOpenViewModel: UserBoxOpenViewModel = viewModel {
+        UserBoxOpenViewModel(boxRepository, reservationRepository, context)
+    }
 
     // State for animations
     var isContentVisible by remember { mutableStateOf(false) }
     
-    // State for Open Box screen navigation
+    // State for QR scanning
+    var isScanningActive by remember { mutableStateOf(false) }
+    var scanningReservation by remember { mutableStateOf<Reservation?>(null) }
+    var scanningAction by remember { mutableStateOf<UserBoxOpenViewModel.BoxAction?>(null) }
+    
+    // State for Open Box screen navigation (legacy)
     var showOpenBoxScreen by remember { mutableStateOf(false) }
     var selectedReservationId by remember { mutableStateOf<Int?>(null) }
     
@@ -63,6 +84,20 @@ fun ReservationsScreen() {
 
     // User data
     val userId by authRepository.getUserId().collectAsState(initial = null)
+
+    // UI state for box opening
+    val userBoxOpenUiState by userBoxOpenViewModel.uiState.collectAsState()
+
+    // Camera permission launcher
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            isScanningActive = true
+        } else {
+            Toast.makeText(context, "Camera permission required for QR scanning", Toast.LENGTH_LONG).show()
+        }
+    }
 
     // Debug logging
     LaunchedEffect(userId) {
@@ -93,6 +128,29 @@ fun ReservationsScreen() {
     }
 
     val uiState by (viewModel?.uiState ?: MutableStateFlow(ReservationsUiState())).collectAsState()
+
+    // Functions for handling check-in/check-out with QR scanning
+    fun handleCheckIn(reservation: Reservation) {
+        scanningReservation = reservation
+        scanningAction = UserBoxOpenViewModel.BoxAction.CheckIn
+        userBoxOpenViewModel.resetState()
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            isScanningActive = true
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    fun handleCheckOut(reservation: Reservation) {
+        scanningReservation = reservation
+        scanningAction = UserBoxOpenViewModel.BoxAction.CheckOut
+        userBoxOpenViewModel.resetState()
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            isScanningActive = true
+        } else {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+        }
+    }
     
     // Filter and sort reservations
     val filteredAndSortedReservations = remember(uiState.reservations, selectedFilter) {
@@ -127,6 +185,254 @@ fun ReservationsScreen() {
         }
         kotlinx.coroutines.delay(200)
         isContentVisible = true
+    }
+
+    // Handle successful check-in/check-out completion
+    LaunchedEffect(userBoxOpenUiState.isBoxOpened, userBoxOpenUiState.successMessage) {
+        if (userBoxOpenUiState.isBoxOpened && userBoxOpenUiState.successMessage != null) {
+            Toast.makeText(context, userBoxOpenUiState.successMessage, Toast.LENGTH_LONG).show()
+            kotlinx.coroutines.delay(2000)
+            // Reload reservations to update the status
+            viewModel?.loadReservations()
+            userBoxOpenViewModel.resetState()
+            scanningReservation = null
+            scanningAction = null
+            isScanningActive = false
+        }
+    }
+
+    // Handle box opening errors
+    LaunchedEffect(userBoxOpenUiState.errorMessage) {
+        if (userBoxOpenUiState.errorMessage != null) {
+            Toast.makeText(context, userBoxOpenUiState.errorMessage, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    // QR Scanner UI - Full screen when active
+    if (isScanningActive && scanningReservation != null) {
+        AnimatedVisibility(
+            visible = true,
+            enter = scaleIn() + fadeIn()
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Spacer(modifier = Modifier.height(48.dp))
+
+                // Header card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = cardWhite),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = if (scanningAction == UserBoxOpenViewModel.BoxAction.CheckIn) 
+                                Icons.Default.Done else Icons.Default.ExitToApp,
+                            contentDescription = null,
+                            tint = airbnbRed,
+                            modifier = Modifier.size(48.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Scan Box QR Code",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = textDark
+                        )
+                        Text(
+                            text = "Scan the QR code on box #${scanningReservation!!.box?.boxId} to ${if (scanningAction == UserBoxOpenViewModel.BoxAction.CheckIn) "check in" else "check out"}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = textLight,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Large camera view for better scanning
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .clip(RoundedCornerShape(24.dp))
+                ) {
+                    QRCodeScanner(
+                        onQrCodeScanned = { scannedData ->
+                            try {
+                                val boxId = scannedData.toIntOrNull()
+                                if (boxId != null && scanningReservation != null && scanningAction != null) {
+                                    println("🔍 DEBUG - ReservationsScreen: QR scanned - Box ID: $boxId")
+                                    isScanningActive = false
+                                    when (scanningAction) {
+                                        UserBoxOpenViewModel.BoxAction.CheckIn -> {
+                                            userBoxOpenViewModel.startCheckIn(scanningReservation!!, boxId)
+                                        }
+                                        UserBoxOpenViewModel.BoxAction.CheckOut -> {
+                                            userBoxOpenViewModel.startCheckOut(scanningReservation!!, boxId)
+                                        }
+                                        null -> { /* Do nothing */ }
+                                    }
+                                } else {
+                                    Toast.makeText(context, "Invalid QR code. Please scan a valid box QR code.", Toast.LENGTH_LONG).show()
+                                    isScanningActive = false
+                                }
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Error processing QR code: ${e.message}", Toast.LENGTH_LONG).show()
+                                isScanningActive = false
+                            }
+                        },
+                        modifier = Modifier.fillMaxSize()
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Cancel button
+                Button(
+                    onClick = { 
+                        isScanningActive = false
+                        scanningReservation = null
+                        scanningAction = null
+                        userBoxOpenViewModel.clearMessages()
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = airbnbRed),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Icon(imageVector = Icons.Default.Close, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Cancel Scanning", style = MaterialTheme.typography.titleMedium)
+                }
+            }
+        }
+        return
+    }
+
+    // Box opening confirmation dialog (YES/NO)
+    if (userBoxOpenUiState.showConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { /* Don't allow dismissal during audio playback */ },
+            title = null,
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Sound wave icon
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowUp,
+                        contentDescription = null,
+                        tint = airbnbRed,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "Box Opening Signal Sent! 📦",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = textDark,
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
+                    Text(
+                        text = "Listen to the confirmation sound and check if the box opened physically.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = textLight,
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    Text(
+                        text = "Did the box open successfully?",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = textDark,
+                        textAlign = TextAlign.Center
+                    )
+                    
+                    Spacer(modifier = Modifier.height(20.dp))
+                    
+                    // Yes/No buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // NO button
+                        Button(
+                            onClick = {
+                                userBoxOpenViewModel.confirmBoxOpening(false)
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = null,
+                                tint = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "NO",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                        
+                        // YES button
+                        Button(
+                            onClick = {
+                                userBoxOpenViewModel.confirmBoxOpening(true)
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF4CAF50)
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Check,
+                                contentDescription = null,
+                                tint = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "YES",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {}
+        )
     }
 
     Column(
@@ -345,8 +651,8 @@ fun ReservationsScreen() {
                                 ReservationCard(
                                     reservation = reservation,
                                     allReservations = uiState.reservations,
-                                    onCheckIn = { viewModel?.checkIn(reservation.id) ?: Unit },
-                                    onCheckOut = { viewModel?.checkOut(reservation.id) ?: Unit },
+                                    onCheckIn = { handleCheckIn(reservation) },
+                                    onCheckOut = { handleCheckOut(reservation) },
                                     onOpenBox = { reservationId ->
                                         selectedReservationId = reservationId
                                         showOpenBoxScreen = true
@@ -359,8 +665,10 @@ fun ReservationsScreen() {
                                         selectedReservationId = reservationId
                                         showOrderHistoryScreen = true
                                     },
-                                    isCheckingIn = uiState.checkingInReservations.contains(reservation.id),
-                                    isCheckingOut = uiState.checkingOutReservations.contains(reservation.id)
+                                    isCheckingIn = uiState.checkingInReservations.contains(reservation.id) || 
+                                                   (userBoxOpenUiState.isLoading && scanningReservation?.id == reservation.id && scanningAction == UserBoxOpenViewModel.BoxAction.CheckIn),
+                                    isCheckingOut = uiState.checkingOutReservations.contains(reservation.id) || 
+                                                    (userBoxOpenUiState.isLoading && scanningReservation?.id == reservation.id && scanningAction == UserBoxOpenViewModel.BoxAction.CheckOut)
                                 )
                             }
                         }
@@ -370,7 +678,7 @@ fun ReservationsScreen() {
         }
     }
     
-    // Open Box Screen overlay
+    // Legacy Open Box Screen overlay - can be removed if not needed elsewhere
     if (showOpenBoxScreen && selectedReservationId != null) {
         OpenBoxScreen(
             reservationId = selectedReservationId!!,
@@ -510,7 +818,7 @@ private fun ReservationCard(
                     Button(
                         onClick = { 
                             if (!shouldDisableCheckIn) {
-                                onOpenBox(reservation.id)
+                                onCheckIn()
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -664,7 +972,7 @@ private fun ReservationCard(
                             )
                             
                             Button(
-                                onClick = { onOpenBox(reservation.id) },
+                                onClick = onCheckOut,
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2196F3)),
                                 shape = RoundedCornerShape(12.dp),
