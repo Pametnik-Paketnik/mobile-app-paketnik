@@ -29,6 +29,50 @@ fun AuthScreen(
         }
     }
 
+    // Handle 2FA flow
+    when {
+        uiState.twoFactorRequired -> {
+            when {
+                uiState.available2FAMethods.size > 1 && uiState.selectedTwoFactorMethod == null -> {
+                    // Show method selection for multiple 2FA methods
+                    TwoFactorSelectionScreen(
+                        availableMethods = uiState.available2FAMethods,
+                        onMethodSelected = { methodType ->
+                            authViewModel.selectTwoFactorMethod(methodType)
+                        }
+                    )
+                }
+                uiState.selectedTwoFactorMethod == "totp" || (uiState.available2FAMethods.size == 1 && uiState.available2FAMethods.first().type == "totp") -> {
+                    // Show TOTP verification
+                    TotpVerificationScreen(
+                        isLoading = uiState.isLoading,
+                        errorMessage = uiState.errorMessage,
+                        onVerify = { code ->
+                            authViewModel.verifyTotp(code)
+                        },
+                        onBack = {
+                            authViewModel.resetTwoFactorFlow()
+                        }
+                    )
+                }
+                uiState.selectedTwoFactorMethod == "face_id" || (uiState.available2FAMethods.size == 1 && uiState.available2FAMethods.first().type == "face_id") -> {
+                    // Show Face verification using new screen
+                    FaceVerificationLoginScreen(
+                        isLoading = uiState.isLoading,
+                        errorMessage = uiState.errorMessage,
+                        onFaceVerified = { faceImageFile ->
+                            authViewModel.verifyFace(faceImageFile)
+                        },
+                        onBack = {
+                            authViewModel.resetTwoFactorFlow()
+                        }
+                    )
+                }
+            }
+            return
+        }
+    }
+
     // Airbnb-style color palette
     val airbnbRed = Color(0xFFFF5A5F)
     val lightGray = Color(0xFFF7F7F7)

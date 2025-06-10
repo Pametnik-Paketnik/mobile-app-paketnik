@@ -91,11 +91,17 @@ dependencies {
     implementation("androidx.navigation:navigation-runtime-ktx:2.7.6")
 
     // Firebase and Push Notifications
-    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.firebase:firebase-analytics-ktx")
     
     // Work Manager for background tasks
     implementation("androidx.work:work-runtime-ktx:2.9.0")
+
+    // Coil for image loading
+    implementation("io.coil-kt:coil-compose:2.5.0")
+    
+    // Foundation for HorizontalPager
+    implementation("androidx.compose.foundation:foundation:1.5.4")
 
 }

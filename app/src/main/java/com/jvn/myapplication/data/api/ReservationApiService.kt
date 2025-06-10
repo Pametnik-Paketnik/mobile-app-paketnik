@@ -10,7 +10,33 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.PATCH
 import retrofit2.http.Path
+
+data class CreateReservationRequest(
+    val guestId: Int,
+    val hostId: Int,
+    val boxId: String,
+    val checkinAt: String,
+    val checkoutAt: String
+)
+
+data class UpdateReservationRequest(
+    val checkinAt: String? = null,
+    val checkoutAt: String? = null
+)
+
+data class ReservationResponse(
+    val id: Int,
+    val guestId: Int,
+    val hostId: Int,
+    val boxId: String,
+    val checkinAt: String,
+    val checkoutAt: String,
+    val status: String,
+    val createdAt: String,
+    val updatedAt: String
+)
 
 interface ReservationApiService {
     @GET("api/reservations")
@@ -47,4 +73,17 @@ interface ReservationApiService {
         @Header("Authorization") token: String,
         @Body request: CheckOutRequest
     ): Response<CheckOutResponse>
+
+    @POST("api/reservations")
+    suspend fun createReservation(
+        @Body request: CreateReservationRequest,
+        @Header("Authorization") token: String
+    ): Response<ReservationResponse>
+
+    @PATCH("api/reservations/{id}")
+    suspend fun updateReservation(
+        @Path("id") id: String,
+        @Header("Authorization") token: String,
+        @Body request: UpdateReservationRequest
+    ): Response<ReservationResponse>
 } 

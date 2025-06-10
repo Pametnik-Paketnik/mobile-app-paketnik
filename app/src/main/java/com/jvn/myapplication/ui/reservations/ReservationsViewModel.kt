@@ -106,6 +106,41 @@ class ReservationsViewModel(
         }
     }
 
+    fun checkOut(reservationId: Int) {
+        viewModelScope.launch {
+            // Add reservation to checking out set
+            _uiState.value = _uiState.value.copy(
+                checkingOutReservations = _uiState.value.checkingOutReservations + reservationId
+            )
+
+            reservationRepository.checkOut(reservationId)
+                .onSuccess { checkOutResponse ->
+                    if (checkOutResponse.success) {
+                        println("🔍 DEBUG - ReservationsViewModel: Check-out successful: ${checkOutResponse.message}")
+                        // Reload reservations to get updated data
+                        loadReservations()
+                    } else {
+                        println("🔍 DEBUG - ReservationsViewModel: Check-out failed: ${checkOutResponse.message}")
+                        _uiState.value = _uiState.value.copy(
+                            errorMessage = checkOutResponse.message
+                        )
+                    }
+                }
+                .onFailure { exception ->
+                    println("🔍 DEBUG - ReservationsViewModel: Check-out exception: ${exception.message}")
+                    _uiState.value = _uiState.value.copy(
+                        errorMessage = exception.message ?: "Check-out failed"
+                    )
+                }
+                .also {
+                    // Remove reservation from checking out set
+                    _uiState.value = _uiState.value.copy(
+                        checkingOutReservations = _uiState.value.checkingOutReservations - reservationId
+                    )
+                }
+        }
+    }
+
     fun clearError() {
         _uiState.value = _uiState.value.copy(errorMessage = null)
     }
@@ -115,5 +150,6 @@ data class ReservationsUiState(
     val isLoading: Boolean = false,
     val reservations: List<Reservation> = emptyList(),
     val checkingInReservations: Set<Int> = emptySet(),
+    val checkingOutReservations: Set<Int> = emptySet(),
     val errorMessage: String? = null
 ) 

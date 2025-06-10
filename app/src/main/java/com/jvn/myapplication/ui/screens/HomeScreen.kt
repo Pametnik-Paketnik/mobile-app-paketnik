@@ -29,7 +29,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jvn.myapplication.data.repository.AuthRepository
+import com.jvn.myapplication.data.repository.BoxRepository
 import com.jvn.myapplication.ui.main.QRCodeScanner
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -50,21 +52,48 @@ fun HomeScreen() {
 
     // Repositories
     val authRepository = remember { AuthRepository(context) }
+    val boxRepository = remember { BoxRepository(context) }
 
     // State variables
     var isScanningActive by remember { mutableStateOf(false) }
     
     // User data from repository
     val userId by authRepository.getUserId().collectAsState(initial = null)
-    val username by authRepository.getUsername().collectAsState(initial = null)
+    val name by authRepository.getName().collectAsState(initial = null)
+    val email by authRepository.getEmail().collectAsState(initial = null)
     val userType by authRepository.getUserType().collectAsState(initial = null)
+
+    // ViewModels (only for HOST users)
+    val boxOpenViewModel: BoxOpenViewModel? = if (userType == "HOST") {
+        viewModel { BoxOpenViewModel(boxRepository, context) }
+    } else null
 
     // Animation state
     var isContentVisible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(userId, username, userType) {
+    // UI state for box opening (HOST only)
+    val uiState = boxOpenViewModel?.uiState?.collectAsState()
+
+    LaunchedEffect(Unit) {
         delay(300)
         isContentVisible = true
+    }
+
+    // Reset box open state only when screen first loads (not on user data changes)
+    LaunchedEffect(userType) {
+        if (userType == "HOST") {
+            boxOpenViewModel?.resetState()
+        }
+    }
+
+    // Handle final confirmation result
+    LaunchedEffect(uiState?.value?.isBoxOpened, uiState?.value?.successMessage) {
+        if (uiState?.value?.isBoxOpened == true && uiState?.value?.successMessage != null) {
+            Toast.makeText(context, uiState.value.successMessage, Toast.LENGTH_LONG).show()
+            delay(2000)
+            boxOpenViewModel?.resetState()
+            isScanningActive = false
+        }
     }
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
@@ -133,10 +162,10 @@ fun HomeScreen() {
                             )
                         }
                         
-                        if (username != null) {
+                        if (name != null) {
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "Hello, $username! 👋",
+                                "Hello, $name! 👋",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = Color.White.copy(alpha = 0.9f),
                                 textAlign = TextAlign.Center
@@ -169,9 +198,28 @@ fun HomeScreen() {
                             .clip(RoundedCornerShape(24.dp))
                     ) {
                         QRCodeScanner(
-                            onQrCodeScanned = { boxId ->
-                                isScanningActive = false
-                                Toast.makeText(context, "✅ QR Code scanned! Box ID: $boxId", Toast.LENGTH_LONG).show()
+                            onQrCodeScanned = { qrData ->
+                                if (userType == "HOST" && boxOpenViewModel != null && userId != null) {
+                                    // For HOST users: Try to open the box
+                                    try {
+                                        val boxId = qrData.toIntOrNull()
+                                        if (boxId != null) {
+                                            println("🔍 DEBUG - HomeScreen: QR scanned - Box ID: $boxId")
+                                            isScanningActive = false
+                                            boxOpenViewModel.openBox(boxId, userId!!.toInt())
+                                        } else {
+                                            Toast.makeText(context, "Invalid QR code. Please scan a valid box QR code.", Toast.LENGTH_LONG).show()
+                                            isScanningActive = false
+                                        }
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "Error processing QR code: ${e.message}", Toast.LENGTH_LONG).show()
+                                        isScanningActive = false
+                                    }
+                                } else {
+                                    // For non-HOST users: Just show the scanned data
+                                    isScanningActive = false
+                                    Toast.makeText(context, "✅ QR Code scanned! Data: $qrData", Toast.LENGTH_LONG).show()
+                                }
                             },
                             modifier = Modifier.fillMaxSize()
                         )
@@ -180,7 +228,10 @@ fun HomeScreen() {
                     Spacer(modifier = Modifier.height(24.dp))
 
                     Button(
-                        onClick = { isScanningActive = false },
+                        onClick = { 
+                            isScanningActive = false
+                            boxOpenViewModel?.clearMessages()
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
@@ -194,9 +245,211 @@ fun HomeScreen() {
                 }
             }
         } else {
+            // Error message for HOST users
+            uiState?.value?.errorMessage?.let { error ->
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(
+                        initialOffsetY = { it },
+                        animationSpec = tween(600)
+                    ) + fadeIn(animationSpec = tween(600))
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = error,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Loading indicator for HOST users
+            if (uiState?.value?.isLoading == true) {
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(
+                        initialOffsetY = { it },
+                        animationSpec = tween(600)
+                    ) + fadeIn(animationSpec = tween(600))
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        colors = CardDefaults.cardColors(containerColor = cardWhite)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = airbnbRed
+                            )
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(
+                                text = "Opening box...",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = textDark
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Confirmation dialog for HOST users
+            if (uiState?.value?.showConfirmationDialog == true) {
+                AnimatedVisibility(
+                    visible = true,
+                    enter = slideInVertically(
+                        initialOffsetY = { it },
+                        animationSpec = tween(600)
+                    ) + fadeIn(animationSpec = tween(600))
+                ) {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .shadow(12.dp, RoundedCornerShape(20.dp)),
+                        colors = CardDefaults.cardColors(containerColor = cardWhite),
+                        shape = RoundedCornerShape(20.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            // Sound wave icon
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowUp,
+                                contentDescription = null,
+                                tint = airbnbRed,
+                                modifier = Modifier.size(48.dp)
+                            )
+                            
+                            Spacer(modifier = Modifier.height(16.dp))
+                            
+                            Text(
+                                text = "Box Opening Signal Sent! 📦",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = textDark,
+                                textAlign = TextAlign.Center
+                            )
+                            
+                            Spacer(modifier = Modifier.height(8.dp))
+                            
+                            Text(
+                                text = "Listen to the confirmation sound and check if your box opened physically.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = textLight,
+                                textAlign = TextAlign.Center
+                            )
+                            
+                            Spacer(modifier = Modifier.height(24.dp))
+                            
+                            Text(
+                                text = "Did the box open successfully?",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = textDark,
+                                textAlign = TextAlign.Center
+                            )
+                            
+                            Spacer(modifier = Modifier.height(20.dp))
+                            
+                            // Yes/No buttons
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                // NO button
+                                Button(
+                                    onClick = {
+                                        boxOpenViewModel?.confirmBoxOpening(false)
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(56.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.error
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = null,
+                                        tint = Color.White
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "NO",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                                
+                                // YES button
+                                Button(
+                                    onClick = {
+                                        boxOpenViewModel?.confirmBoxOpening(true)
+                                    },
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .height(56.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFF4CAF50)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = Color.White
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        "YES",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Main dashboard content - true centering between header bottom and bottom nav top
             AnimatedVisibility(
-                visible = isContentVisible,
+                visible = isContentVisible && uiState?.value?.isLoading != true && uiState?.value?.showConfirmationDialog != true,
                 enter = scaleIn(
                     animationSpec = spring(
                         dampingRatio = Spring.DampingRatioMediumBouncy,
@@ -238,6 +491,7 @@ fun HomeScreen() {
                                     onClick = {
                                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
                                             isScanningActive = true
+                                            boxOpenViewModel?.clearMessages()
                                         } else {
                                             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                                         }

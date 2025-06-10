@@ -6,6 +6,8 @@ import com.jvn.myapplication.data.api.NetworkModule
 import com.jvn.myapplication.data.model.UnlockHistory
 import com.jvn.myapplication.data.model.UnlockHistoryWithUser
 import com.jvn.myapplication.data.model.BoxData
+import com.jvn.myapplication.data.model.BoxOpenRequest
+import com.jvn.myapplication.data.model.BoxOpenResponse
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.*
@@ -31,7 +33,7 @@ class BoxRepository(private val context: Context) {
                         status = item.status,
                         tokenFormat = item.tokenFormat,
                         userId = item.user.id,
-                        username = item.user.username
+                        username = "${item.user.name} ${item.user.surname}"
                     )
                 }
                 Result.success(historyItems)
@@ -60,7 +62,7 @@ class BoxRepository(private val context: Context) {
                         status = item.status,
                         tokenFormat = item.tokenFormat,
                         userId = item.user.id,
-                        username = item.user.username
+                        username = "${item.user.name} ${item.user.surname}"
                     )
                 }
                 Result.success(historyItems)
@@ -145,7 +147,7 @@ class BoxRepository(private val context: Context) {
             val allHistoryResponse = boxApi.getAllOpeningHistory("Bearer $token")
             if (allHistoryResponse.isSuccessful && allHistoryResponse.body() != null) {
                 val allHistory = allHistoryResponse.body()!!
-                val hostBoxIds = hostBoxes.map { it.boxId }.toSet()
+                val hostBoxIds = hostBoxes.mapNotNull { it.boxId }.toSet()
                 
                 val filteredHistory = allHistory.filter { item ->
                     hostBoxIds.contains(item.boxId)
@@ -157,7 +159,7 @@ class BoxRepository(private val context: Context) {
                         status = item.status,
                         tokenFormat = item.tokenFormat,
                         userId = item.user.id,
-                        username = item.user.username
+                        username = "${item.user.name} ${item.user.surname}"
                     )
                 }
                 
@@ -190,7 +192,7 @@ class BoxRepository(private val context: Context) {
                 val boxes = response.body()!!
                 println("🔍 DEBUG - BoxRepository: Got ${boxes.size} boxes for host")
                 boxes.forEach { box ->
-                    println("🔍 DEBUG - Box: ID=${box.id}, BoxId=${box.boxId}, Location=${box.location}, Status=${box.status}")
+                    println("🔍 DEBUG - Box: BoxId=${box.boxId}, Location=${box.location}, Status=${box.status}")
                 }
                 Result.success(boxes)
             } else {
@@ -202,6 +204,117 @@ class BoxRepository(private val context: Context) {
             }
         } catch (e: Exception) {
             println("🔍 DEBUG - BoxRepository: Exception in getBoxesByHost: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getAllBoxes(): Result<List<BoxData>> {
+        return try {
+            val token = authRepository.getAuthToken().first()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("No authentication token"))
+            }
+
+            println("🔍 DEBUG - BoxRepository: Getting all boxes")
+            
+            val response = boxApi.getAllBoxes("Bearer $token")
+            
+            println("🔍 DEBUG - BoxRepository: Response code: ${response.code()}")
+            println("🔍 DEBUG - BoxRepository: Response successful: ${response.isSuccessful}")
+            
+            if (response.isSuccessful && response.body() != null) {
+                val boxes = response.body()!!
+                println("🔍 DEBUG - BoxRepository: Got ${boxes.size} boxes")
+                boxes.forEach { box ->
+                    println("🔍 DEBUG - Box: BoxId=${box.boxId}, Location=${box.location}, Status=${box.status}")
+                }
+                Result.success(boxes)
+            } else {
+                val errorBody = response.errorBody()?.string()
+                val errorMessage = "Failed to fetch all boxes: ${response.message()}"
+                println("🔍 DEBUG - BoxRepository: $errorMessage")
+                println("🔍 DEBUG - Error body: $errorBody")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            println("🔍 DEBUG - BoxRepository: Exception in getAllBoxes: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun getBoxAvailability(boxId: String): Result<com.jvn.myapplication.data.model.BoxAvailabilityResponse> {
+        return try {
+            val token = authRepository.getAuthToken().first()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("No authentication token"))
+            }
+
+            val response = boxApi.getBoxAvailability(boxId, "Bearer $token")
+            
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                val errorBody = response.errorBody()?.string()
+                val errorMessage = "Failed to fetch box availability: ${response.message()}"
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun openBox(boxId: Int, hostId: Int): Result<BoxOpenResponse> {
+        return try {
+            val token = authRepository.getAuthToken().first()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("No authentication token"))
+            }
+
+            println("🔍 DEBUG - BoxRepository: Opening box $boxId for host $hostId")
+
+            // First, verify that the host owns this box
+            val ownedBoxes = getBoxesByHost(hostId)
+                .getOrElse { 
+                    return Result.failure(Exception("Failed to verify box ownership"))
+                }
+
+            val boxExists = ownedBoxes.any { box -> 
+                box.boxId?.toIntOrNull() == boxId
+            }
+
+            if (!boxExists) {
+                println("🔍 DEBUG - BoxRepository: Host $hostId does not own box $boxId")
+                return Result.failure(Exception("You do not own this box. Access denied."))
+            }
+
+            println("🔍 DEBUG - BoxRepository: Ownership verified. Proceeding to open box $boxId")
+
+            // Make the API call to open the box
+            val request = BoxOpenRequest(boxId = boxId)
+            val response = boxApi.openBox(request, "Bearer $token")
+
+            println("🔍 DEBUG - BoxRepository: Open box API response code: ${response.code()}")
+            println("🔍 DEBUG - BoxRepository: Open box API response successful: ${response.isSuccessful}")
+
+            if (response.isSuccessful && response.body() != null) {
+                val boxOpenResponse = response.body()!!
+                println("🔍 DEBUG - BoxRepository: Box opened successfully")
+                println("🔍 DEBUG - BoxRepository: Result: ${boxOpenResponse.result}")
+                println("🔍 DEBUG - BoxRepository: ErrorNumber: ${boxOpenResponse.errorNumber}")
+                println("🔍 DEBUG - BoxRepository: TokenFormat: ${boxOpenResponse.tokenFormat}")
+                println("🔍 DEBUG - BoxRepository: Data length: ${boxOpenResponse.data.length}")
+                
+                Result.success(boxOpenResponse)
+            } else {
+                val errorBody = response.errorBody()?.string()
+                val errorMessage = "Failed to open box: ${response.message()}"
+                println("🔍 DEBUG - BoxRepository: $errorMessage")
+                println("🔍 DEBUG - Error body: $errorBody")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            println("🔍 DEBUG - BoxRepository: Exception in openBox: ${e.message}")
+            e.printStackTrace()
             Result.failure(e)
         }
     }

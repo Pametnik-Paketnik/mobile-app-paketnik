@@ -18,15 +18,16 @@ fun LoginForm(
     uiState: AuthUiState,
     airbnbColor: Color
 ) {
-    var username by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
     OutlinedTextField(
-        value = username,
-        onValueChange = { username = it },
-        label = { Text("Username") },
+        value = email,
+        onValueChange = { email = it },
+        label = { Text("Email") },
         modifier = Modifier.fillMaxWidth(),
         singleLine = true,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
         shape = RoundedCornerShape(12.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = airbnbColor,
@@ -54,13 +55,13 @@ fun LoginForm(
     Spacer(modifier = Modifier.height(32.dp))
 
     Button(
-        onClick = { authViewModel.login(username, password) },
+        onClick = { authViewModel.login(email, password) },
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp),
         colors = ButtonDefaults.buttonColors(containerColor = airbnbColor),
         shape = RoundedCornerShape(16.dp),
-        enabled = !uiState.isLoading && username.isNotBlank() && password.isNotBlank()
+        enabled = !uiState.isLoading && email.isNotBlank() && password.isNotBlank()
     ) {
         if (uiState.isLoading) {
             CircularProgressIndicator(

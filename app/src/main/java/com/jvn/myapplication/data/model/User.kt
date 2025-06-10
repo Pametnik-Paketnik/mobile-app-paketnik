@@ -3,7 +3,9 @@ package com.jvn.myapplication.data.model
 
 data class User(
     val id: Int,
-    val username: String,
+    val name: String,
+    val surname: String,
+    val email: String,
     val userType: String,
     val createdAt: String? = null,
     val updatedAt: String? = null

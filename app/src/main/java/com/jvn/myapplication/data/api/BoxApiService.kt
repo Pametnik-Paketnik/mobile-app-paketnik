@@ -3,9 +3,14 @@ package com.jvn.myapplication.data.api
 
 import com.jvn.myapplication.data.model.UnlockHistory
 import com.jvn.myapplication.data.model.BoxData
+import com.jvn.myapplication.data.model.BoxAvailabilityResponse
+import com.jvn.myapplication.data.model.BoxOpenRequest
+import com.jvn.myapplication.data.model.BoxOpenResponse
 import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.POST
 import retrofit2.http.Path
 
 interface BoxApiService {
@@ -31,4 +36,21 @@ interface BoxApiService {
         @Path("hostId") hostId: String,
         @Header("Authorization") token: String
     ): Response<List<BoxData>>
+
+    @GET("api/boxes")
+    suspend fun getAllBoxes(
+        @Header("Authorization") token: String
+    ): Response<List<BoxData>>
+
+    @GET("api/boxes/{boxId}/availability")
+    suspend fun getBoxAvailability(
+        @Path("boxId") boxId: String,
+        @Header("Authorization") token: String
+    ): Response<BoxAvailabilityResponse>
+
+    @POST("api/boxes/open")
+    suspend fun openBox(
+        @Body request: BoxOpenRequest,
+        @Header("Authorization") token: String
+    ): Response<BoxOpenResponse>
 }

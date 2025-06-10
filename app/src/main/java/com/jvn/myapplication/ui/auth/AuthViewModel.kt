@@ -3,26 +3,52 @@ package com.jvn.myapplication.ui.auth
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jvn.myapplication.data.repository.AuthRepository
+import com.jvn.myapplication.data.model.LoginResponse
+import com.jvn.myapplication.data.model.TwoFactorMethod
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 
 class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
 
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
-    fun login(username: String, password: String) {
+    init {
+        // Monitor auth token changes to reset state on logout
+        viewModelScope.launch {
+            authRepository.getAuthToken().collect { token ->
+                if (token.isNullOrEmpty()) {
+                    // Token cleared (logout), reset state
+                    _uiState.value = AuthUiState()
+                }
+            }
+        }
+    }
+
+    fun login(email: String, password: String) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
 
-            authRepository.login(username, password)
-                .onSuccess { message ->
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        isAuthenticated = true
-                    )
+            authRepository.login(email, password)
+                .onSuccess { loginResponse ->
+                    if (loginResponse.twoFactorRequired == true) {
+                        // 2FA is required
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            twoFactorRequired = true,
+                            tempToken = loginResponse.tempToken,
+                            available2FAMethods = loginResponse.available_2fa_methods ?: emptyList()
+                        )
+                    } else {
+                        // Standard login successful
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            isAuthenticated = true
+                        )
+                    }
                 }
                 .onFailure { exception ->
                     _uiState.value = _uiState.value.copy(
@@ -33,7 +59,7 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
         }
     }
 
-    fun register(username: String, password: String, confirmPassword: String, userType: String) {
+    fun register(name: String, surname: String, email: String, password: String, confirmPassword: String, userType: String) {
         if (password != confirmPassword) {
             _uiState.value = _uiState.value.copy(
                 errorMessage = "Passwords do not match",
@@ -50,7 +76,7 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
             )
 
             try {
-                val response = authRepository.register(username, password, userType)
+                val response = authRepository.register(name, surname, email, password, userType)
                 if (response.success) {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -74,11 +100,82 @@ class AuthViewModel(private val authRepository: AuthRepository) : ViewModel() {
         }
     }
 
+    fun verifyTotp(code: String) {
+        val tempToken = _uiState.value.tempToken
+        if (tempToken == null) {
+            _uiState.value = _uiState.value.copy(errorMessage = "No temp token available")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+
+            authRepository.verifyTotpLogin(tempToken, code)
+                .onSuccess { loginResponse ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        isAuthenticated = true,
+                        twoFactorRequired = false
+                    )
+                }
+                .onFailure { exception ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = exception.message ?: "TOTP verification failed"
+                    )
+                }
+        }
+    }
+
+    fun verifyFace(faceImageFile: File) {
+        val tempToken = _uiState.value.tempToken
+        if (tempToken == null) {
+            _uiState.value = _uiState.value.copy(errorMessage = "No temp token available")
+            return
+        }
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+
+            authRepository.verifyFaceLogin(tempToken, faceImageFile)
+                .onSuccess { loginResponse ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        isAuthenticated = true,
+                        twoFactorRequired = false
+                    )
+                }
+                .onFailure { exception ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        errorMessage = exception.message ?: "Face verification failed"
+                    )
+                }
+        }
+    }
+
+    fun selectTwoFactorMethod(methodType: String) {
+        _uiState.value = _uiState.value.copy(selectedTwoFactorMethod = methodType)
+    }
+
+    fun resetTwoFactorFlow() {
+        _uiState.value = _uiState.value.copy(
+            twoFactorRequired = false,
+            tempToken = null,
+            available2FAMethods = emptyList(),
+            selectedTwoFactorMethod = null
+        )
+    }
+
     fun clearMessages() {
         _uiState.value = _uiState.value.copy(
             errorMessage = null,
             successMessage = null
         )
+    }
+
+    fun resetState() {
+        _uiState.value = AuthUiState()
     }
 }
 
@@ -87,5 +184,9 @@ data class AuthUiState(
     val isAuthenticated: Boolean = false,
     val registrationSuccess: Boolean = false,
     val errorMessage: String? = null,
-    val successMessage: String? = null
+    val successMessage: String? = null,
+    val twoFactorRequired: Boolean = false,
+    val tempToken: String? = null,
+    val available2FAMethods: List<TwoFactorMethod> = emptyList(),
+    val selectedTwoFactorMethod: String? = null
 )

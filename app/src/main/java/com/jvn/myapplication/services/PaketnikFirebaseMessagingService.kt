@@ -15,130 +15,149 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.jvn.myapplication.MainActivity
 import com.jvn.myapplication.R
-import com.jvn.myapplication.data.repository.AuthRepository
 import com.jvn.myapplication.workers.TokenUpdateWorker
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
+/**
+ * Firebase Cloud Messaging Service for 2FA Face Authentication
+ * 
+ * This service handles:
+ * 1. FCM token updates to backend
+ * 2. 2FA face authentication requests from backend
+ * 3. Notification display for face verification
+ */
 class PaketnikFirebaseMessagingService : FirebaseMessagingService() {
 
     companion object {
-        private const val TAG = "FCMService"
-        private const val CHANNEL_ID = "login_approval_channel"
-        private const val NOTIFICATION_ID = 100
+        private const val TAG = "FCM_2FA_Service"
+        private const val CHANNEL_ID = "face_auth_channel"
+        private const val FACE_AUTH_NOTIFICATION_ID = 200
     }
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        Log.d(TAG, "🔥 2FA FCM Service initialized")
     }
 
+    /**
+     * Called when FCM token is refreshed
+     * This token must be sent to backend for 2FA notifications
+     */
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        Log.d(TAG, "New FCM token: $token")
+        Log.d(TAG, "📱 New FCM token generated: ${token.take(20)}...")
         
-        // Use WorkManager to update token on backend (handles network retry)
-        val updateTokenWork = OneTimeWorkRequestBuilder<TokenUpdateWorker>()
-            .setInputData(workDataOf("fcm_token" to token))
+        // Register device with backend using WorkManager (handles network retry)
+        val deviceRegistrationWork = OneTimeWorkRequestBuilder<com.jvn.myapplication.workers.DeviceRegistrationWorker>()
+            .setInputData(workDataOf(
+                com.jvn.myapplication.workers.DeviceRegistrationWorker.FCM_TOKEN_KEY to token
+            ))
             .build()
         
-        WorkManager.getInstance(this).enqueue(updateTokenWork)
+        WorkManager.getInstance(this).enqueue(deviceRegistrationWork)
+        Log.d(TAG, "⬆️ Device registration work scheduled")
     }
 
+    /**
+     * Handle incoming FCM messages
+     * Expected message types:
+     * - face_auth_request: 2FA face authentication request from backend
+     */
     override fun onMessageReceived(remoteMessage: RemoteMessage) {
         super.onMessageReceived(remoteMessage)
         
-        Log.d(TAG, "Message received from: ${remoteMessage.from}")
+        Log.d(TAG, "📨 Message received from: ${remoteMessage.from}")
+        Log.d(TAG, "📋 Message data: ${remoteMessage.data}")
         
-        // Handle different types of notifications
         val messageType = remoteMessage.data["type"]
         
         when (messageType) {
-            "login_approval" -> handleLoginApprovalNotification(remoteMessage)
+            "face_auth_request" -> handleFaceAuthRequest(remoteMessage)
             else -> {
-                // Handle other notification types or show default notification
+                Log.w(TAG, "⚠️ Unknown message type: $messageType")
                 showDefaultNotification(remoteMessage)
             }
         }
     }
 
-    private fun handleLoginApprovalNotification(remoteMessage: RemoteMessage) {
-        val pendingAuthId = remoteMessage.data["pendingAuthId"] ?: return
-        val username = remoteMessage.data["username"] ?: "Unknown user"
-        val ip = remoteMessage.data["ip"] ?: "Unknown IP"
-        val location = remoteMessage.data["location"] ?: "Unknown location"
+    /**
+     * Handle 2FA face authentication request
+     * Expected payload from backend:
+     * {
+     *   "notification": {
+     *     "title": "Face Authentication Required",
+     *     "body": "Login request for user@example.com. Please verify your identity."
+     *   },
+     *   "data": {
+     *     "type": "face_auth_request",
+     *     "requestId": "req_1234567890_abcdef123",
+     *     "timestamp": "2024-01-01T00:00:00.000Z"
+     *   }
+     * }
+     */
+    private fun handleFaceAuthRequest(remoteMessage: RemoteMessage) {
+        val requestId = remoteMessage.data["requestId"]
+        val timestamp = remoteMessage.data["timestamp"]
+        
+        // Use notification title/body if available, otherwise fall back to data or defaults
+        val title = remoteMessage.notification?.title 
+            ?: remoteMessage.data["title"] 
+            ?: "🔐 Face Authentication Required"
+        val body = remoteMessage.notification?.body 
+            ?: remoteMessage.data["body"] 
+            ?: "Please verify your identity to complete login"
 
-        // Create intent to open app with login approval screen
+        if (requestId.isNullOrEmpty()) {
+            Log.e(TAG, "❌ Missing requestId in face auth request")
+            return
+        }
+
+        Log.d(TAG, "🔐 Processing face auth request: $requestId")
+        Log.d(TAG, "📋 Title: $title")
+        Log.d(TAG, "📋 Body: $body")
+        Log.d(TAG, "📋 Timestamp: $timestamp")
+
+        // Create intent to open app with face verification screen
         val intent = Intent(this, MainActivity::class.java).apply {
-            action = "LOGIN_APPROVAL"
-            putExtra("pendingAuthId", pendingAuthId)
-            putExtra("username", username)
-            putExtra("ip", ip)
-            putExtra("location", location)
+            action = "FACE_AUTH_REQUEST"
+            putExtra("requestId", requestId)
+            putExtra("timestamp", timestamp)
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
 
         val pendingIntent = PendingIntent.getActivity(
             this,
-            pendingAuthId.hashCode(),
+            requestId.hashCode(),
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Create approve action
-        val approveIntent = Intent(this, LoginApprovalReceiver::class.java).apply {
-            action = "APPROVE_LOGIN"
-            putExtra("pendingAuthId", pendingAuthId)
-        }
-        val approvePendingIntent = PendingIntent.getBroadcast(
-            this,
-            (pendingAuthId + "_approve").hashCode(),
-            approveIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        // Create deny action
-        val denyIntent = Intent(this, LoginApprovalReceiver::class.java).apply {
-            action = "DENY_LOGIN"
-            putExtra("pendingAuthId", pendingAuthId)
-        }
-        val denyPendingIntent = PendingIntent.getBroadcast(
-            this,
-            (pendingAuthId + "_deny").hashCode(),
-            denyIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
+        // Create high-priority notification for immediate attention
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle("🔐 Login Approval Required")
-            .setContentText("$username is trying to log in from $ip")
+            .setContentTitle(title)
+            .setContentText(body)
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText("$username is trying to log in from $ip ($location). Tap to verify your identity with face recognition.")
+                    .bigText("$body\n\nTap to open the app and complete face verification.")
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_SECURITY)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
-            .addAction(
-                R.drawable.ic_check,
-                "Approve",
-                approvePendingIntent
-            )
-            .addAction(
-                R.drawable.ic_close,
-                "Deny",
-                denyPendingIntent
-            )
             .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .setTimeoutAfter(5 * 60 * 1000) // 5 minutes timeout
             .build()
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        notificationManager.notify(NOTIFICATION_ID, notification)
+        notificationManager.notify(FACE_AUTH_NOTIFICATION_ID, notification)
+        
+        Log.d(TAG, "🔔 Face auth notification displayed for request: $requestId")
     }
 
+    /**
+     * Handle other notification types or fallback notifications
+     */
     private fun showDefaultNotification(remoteMessage: RemoteMessage) {
         val title = remoteMessage.notification?.title ?: "Paketnik"
         val body = remoteMessage.notification?.body ?: "You have a new notification"
@@ -162,20 +181,26 @@ class PaketnikFirebaseMessagingService : FirebaseMessagingService() {
         notificationManager.notify(System.currentTimeMillis().toInt(), notification)
     }
 
+    /**
+     * Create notification channel for face authentication notifications
+     */
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "Login Approval",
+                "Face Authentication",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
-                description = "Notifications for login approval requests"
+                description = "Notifications for 2FA face authentication requests"
                 enableVibration(true)
                 setShowBadge(true)
+                enableLights(true)
             }
 
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
+            
+            Log.d(TAG, "📢 Notification channel created: $CHANNEL_ID")
         }
     }
 } 

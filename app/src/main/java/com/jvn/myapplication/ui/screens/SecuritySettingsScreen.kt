@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -16,12 +17,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.jvn.myapplication.data.repository.AuthRepository
 import com.jvn.myapplication.data.repository.FaceAuthRepository
+import com.jvn.myapplication.data.repository.TotpRepository
 import com.jvn.myapplication.ui.face.FaceAuthScreen
 import com.jvn.myapplication.ui.face.FaceAuthViewModel
 import kotlinx.coroutines.delay
@@ -43,10 +48,11 @@ fun SecuritySettingsScreen(
     val context = LocalContext.current
     val authRepository = remember { AuthRepository(context) }
     val faceAuthRepository = remember { FaceAuthRepository(context) }
+    val totpRepository = remember { TotpRepository(authRepository) }
 
     // ViewModels
     val securitySettingsViewModel: SecuritySettingsViewModel = viewModel {
-        SecuritySettingsViewModel(authRepository, faceAuthRepository)
+        SecuritySettingsViewModel(authRepository, faceAuthRepository, totpRepository)
     }
 
     // State variables
@@ -55,6 +61,7 @@ fun SecuritySettingsScreen(
     
     // Load state from ViewModels
     val faceVerificationEnabled by securitySettingsViewModel.isFace2FAEnabled.collectAsState(initial = false)
+    val totpEnabled by securitySettingsViewModel.isTotpEnabled.collectAsState()
     val securityUiState by securitySettingsViewModel.uiState.collectAsState()
 
     // User data
@@ -199,6 +206,62 @@ fun SecuritySettingsScreen(
                             )
                         }
 
+                        // TOTP Toggle
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Lock,
+                                        contentDescription = null,
+                                        tint = airbnbRed,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = "TOTP (2FA)",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = textDark
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Use Google Authenticator or other TOTP apps for security",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = textLight
+                                )
+                            }
+                            
+                            Spacer(modifier = Modifier.width(16.dp))
+                            
+                            Switch(
+                                checked = totpEnabled,
+                                onCheckedChange = { enabled ->
+                                    if (enabled) {
+                                        securitySettingsViewModel.setupTotp()
+                                    } else {
+                                        securitySettingsViewModel.disableTotp()
+                                    }
+                                },
+                                enabled = !securityUiState.isSettingUpTotp && !securityUiState.isDisablingTotp,
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = Color.White,
+                                    checkedTrackColor = successGreen,
+                                    uncheckedThumbColor = Color.White,
+                                    uncheckedTrackColor = Color.Gray.copy(alpha = 0.4f)
+                                )
+                            )
+                        }
+
                         // Status display
                         Spacer(modifier = Modifier.height(12.dp))
                         when {
@@ -220,23 +283,85 @@ fun SecuritySettingsScreen(
                                     )
                                 }
                             }
-                            faceVerificationEnabled -> {
+                            securityUiState.isSettingUpTotp -> {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.CheckCircle,
-                                        contentDescription = null,
-                                        tint = successGreen,
-                                        modifier = Modifier.size(16.dp)
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                        color = airbnbRed
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "Face Verification is active",
+                                        text = "Setting up TOTP...",
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = successGreen,
+                                        color = textLight,
                                         fontWeight = FontWeight.Medium
                                     )
+                                }
+                            }
+                            securityUiState.isDisablingTotp -> {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp,
+                                        color = airbnbRed
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = "Disabling TOTP...",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = textLight,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                            faceVerificationEnabled || totpEnabled -> {
+                                Column {
+                                    if (faceVerificationEnabled) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = null,
+                                                tint = successGreen,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "Face Verification is active",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = successGreen,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
+                                    if (totpEnabled) {
+                                        if (faceVerificationEnabled) {
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                        }
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.CheckCircle,
+                                                contentDescription = null,
+                                                tint = successGreen,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(
+                                                text = "TOTP is active",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = successGreen,
+                                                fontWeight = FontWeight.Medium
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -322,6 +447,198 @@ fun SecuritySettingsScreen(
                 }
             }
         }
+    }
+
+    // TOTP Setup Dialog
+    if (securityUiState.showTotpSetup && securityUiState.totpSecret != null) {
+        val clipboardManager = LocalClipboardManager.current
+        
+        AlertDialog(
+            onDismissRequest = { securitySettingsViewModel.dismissTotpSetup() },
+            title = {
+                Text(
+                    text = "TOTP Setup",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = textDark
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "Add this Key to your authenticator app:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = textDark,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = lightGray),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = securityUiState.totpSecret!!,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = textDark,
+                                modifier = Modifier.weight(1f)
+                            )
+                            
+                            Spacer(modifier = Modifier.width(8.dp))
+                            
+                            IconButton(
+                                onClick = {
+                                    clipboardManager.setText(AnnotatedString(securityUiState.totpSecret!!))
+                                },
+                                modifier = Modifier.size(32.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = "Copy to clipboard",
+                                    tint = airbnbRed,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    Text(
+                        text = "• Open Google Authenticator, Authy, or any other TOTP app\n" +
+                                "• Add a new account manually\n" +
+                                "• Enter the Key shown above\n" +
+                                "• Your app will generate 6-digit codes every 30 seconds",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = textLight
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { securitySettingsViewModel.proceedToTotpVerification() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = airbnbRed,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = "Done",
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            containerColor = cardWhite,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // TOTP Verification Dialog
+    if (securityUiState.showTotpVerification) {
+        var verificationCode by remember { mutableStateOf("") }
+        
+        AlertDialog(
+            onDismissRequest = { securitySettingsViewModel.dismissTotpVerification() },
+            title = {
+                Text(
+                    text = "Verify TOTP Setup",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = textDark
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "Enter the 6-digit code from your authenticator app to complete setup:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = textDark,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    OutlinedTextField(
+                        value = verificationCode,
+                        onValueChange = { 
+                            if (it.length <= 6 && it.all { char -> char.isDigit() }) {
+                                verificationCode = it
+                            }
+                        },
+                        label = { Text("6-digit code") },
+                        placeholder = { Text("123456") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = airbnbRed,
+                            focusedLabelColor = airbnbRed,
+                            cursorColor = airbnbRed
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Text(
+                        text = "• The code changes every 30 seconds\n• Make sure to enter the current code from your app",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = textLight
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { 
+                        if (verificationCode.length == 6) {
+                            securitySettingsViewModel.verifyTotpSetup(verificationCode)
+                        }
+                    },
+                    enabled = verificationCode.length == 6 && !securityUiState.isVerifyingTotp,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = airbnbRed,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    if (securityUiState.isVerifyingTotp) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = "Verify",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { securitySettingsViewModel.dismissTotpVerification() },
+                    enabled = !securityUiState.isVerifyingTotp
+                ) {
+                    Text(
+                        text = "Cancel",
+                        color = textLight
+                    )
+                }
+            },
+            containerColor = cardWhite,
+            shape = RoundedCornerShape(20.dp)
+        )
     }
 }
 
