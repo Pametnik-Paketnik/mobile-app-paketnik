@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -24,6 +25,7 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -514,7 +516,7 @@ fun UserSettingsScreen(
             },
             confirmButton = {
                 Button(
-                    onClick = { securitySettingsViewModel.dismissTotpSetup() },
+                    onClick = { securitySettingsViewModel.proceedToTotpVerification() },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = airbnbRed,
                         contentColor = Color.White
@@ -524,6 +526,104 @@ fun UserSettingsScreen(
                     Text(
                         text = "Done",
                         fontWeight = FontWeight.Bold
+                    )
+                }
+            },
+            containerColor = cardWhite,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
+    // TOTP Verification Dialog
+    if (securityUiState.showTotpVerification) {
+        var verificationCode by remember { mutableStateOf("") }
+        
+        AlertDialog(
+            onDismissRequest = { securitySettingsViewModel.dismissTotpVerification() },
+            title = {
+                Text(
+                    text = "Verify TOTP Setup",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = textDark
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "Enter the 6-digit code from your authenticator app to complete setup:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = textDark,
+                        fontWeight = FontWeight.Medium
+                    )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    OutlinedTextField(
+                        value = verificationCode,
+                        onValueChange = { 
+                            if (it.length <= 6 && it.all { char -> char.isDigit() }) {
+                                verificationCode = it
+                            }
+                        },
+                        label = { Text("6-digit code") },
+                        placeholder = { Text("123456") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = airbnbRed,
+                            focusedLabelColor = airbnbRed,
+                            cursorColor = airbnbRed
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+                    
+                    Text(
+                        text = "• The code changes every 30 seconds\n• Make sure to enter the current code from your app",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = textLight
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { 
+                        if (verificationCode.length == 6) {
+                            securitySettingsViewModel.verifyTotpSetup(verificationCode)
+                        }
+                    },
+                    enabled = verificationCode.length == 6 && !securityUiState.isVerifyingTotp,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = airbnbRed,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    if (securityUiState.isVerifyingTotp) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = "Verify",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { securitySettingsViewModel.dismissTotpVerification() },
+                    enabled = !securityUiState.isVerifyingTotp
+                ) {
+                    Text(
+                        text = "Cancel",
+                        color = textLight
                     )
                 }
             },

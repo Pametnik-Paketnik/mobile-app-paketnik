@@ -1,6 +1,7 @@
 package com.jvn.myapplication.data.api
 
 import retrofit2.Response
+import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
@@ -22,6 +23,15 @@ data class TotpStatusResponse(
     val message: String
 )
 
+data class TotpVerifySetupRequest(
+    val code: String
+)
+
+data class TotpVerifySetupResponse(
+    val success: Boolean,
+    val message: String
+)
+
 interface TotpApiService {
     @POST("api/2fa/totp/setup")
     suspend fun setupTotp(
@@ -37,4 +47,10 @@ interface TotpApiService {
     suspend fun getTotpStatus(
         @Header("Authorization") token: String
     ): Response<TotpStatusResponse>
+
+    @POST("api/2fa/totp/verify-setup")
+    suspend fun verifyTotpSetup(
+        @Header("Authorization") token: String,
+        @Body request: TotpVerifySetupRequest
+    ): Response<TotpVerifySetupResponse>
 } 

@@ -4,6 +4,8 @@ import com.jvn.myapplication.data.api.NetworkModule
 import com.jvn.myapplication.data.api.TotpSetupResponse
 import com.jvn.myapplication.data.api.TotpDisableResponse
 import com.jvn.myapplication.data.api.TotpStatusResponse
+import com.jvn.myapplication.data.api.TotpVerifySetupRequest
+import com.jvn.myapplication.data.api.TotpVerifySetupResponse
 import kotlinx.coroutines.flow.first
 
 class TotpRepository(
@@ -87,6 +89,33 @@ class TotpRepository(
             }
         } catch (e: Exception) {
             println("🔍 DEBUG - TotpRepository: Exception in getTotpStatus: ${e.message}")
+            Result.failure(e)
+        }
+    }
+
+    suspend fun verifyTotpSetup(code: String): Result<TotpVerifySetupResponse> {
+        return try {
+            val token = authRepository.getAuthToken().first()
+            if (token.isNullOrEmpty()) {
+                return Result.failure(Exception("No authentication token"))
+            }
+
+            println("🔍 DEBUG - TotpRepository: Verifying TOTP setup with code: $code")
+            
+            val request = TotpVerifySetupRequest(code)
+            val response = totpApi.verifyTotpSetup("Bearer $token", request)
+            
+            if (response.isSuccessful && response.body() != null) {
+                val verifyResponse = response.body()!!
+                println("🔍 DEBUG - TotpRepository: TOTP verification success: ${verifyResponse.success}, message: ${verifyResponse.message}")
+                Result.success(verifyResponse)
+            } else {
+                val errorMessage = "TOTP verification failed: ${response.message()}"
+                println("🔍 DEBUG - TotpRepository: $errorMessage")
+                Result.failure(Exception(errorMessage))
+            }
+        } catch (e: Exception) {
+            println("🔍 DEBUG - TotpRepository: Exception in verifyTotpSetup: ${e.message}")
             Result.failure(e)
         }
     }

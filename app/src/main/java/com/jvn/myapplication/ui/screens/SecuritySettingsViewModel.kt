@@ -95,7 +95,7 @@ class SecuritySettingsViewModel(
             
             totpRepository.setupTotp()
                 .onSuccess { totpResponse ->
-                    _isTotpEnabled.value = true
+                    // Don't enable TOTP yet - wait for verification
                     _uiState.value = _uiState.value.copy(
                         isSettingUpTotp = false,
                         totpSecret = totpResponse.secret,
@@ -134,9 +134,55 @@ class SecuritySettingsViewModel(
         }
     }
 
+    fun proceedToTotpVerification() {
+        _uiState.value = _uiState.value.copy(
+            showTotpSetup = false,
+            showTotpVerification = true
+        )
+    }
+
+    fun verifyTotpSetup(code: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isVerifyingTotp = true)
+            
+            totpRepository.verifyTotpSetup(code)
+                .onSuccess { verifyResponse ->
+                    if (verifyResponse.success) {
+                        // Verification successful - enable TOTP
+                        _isTotpEnabled.value = true
+                        _uiState.value = _uiState.value.copy(
+                            isVerifyingTotp = false,
+                            showTotpVerification = false,
+                            totpSecret = null,
+                            successMessage = verifyResponse.message
+                        )
+                    } else {
+                        // Verification failed - keep TOTP disabled
+                        _uiState.value = _uiState.value.copy(
+                            isVerifyingTotp = false,
+                            errorMessage = verifyResponse.message
+                        )
+                    }
+                }
+                .onFailure { exception ->
+                    _uiState.value = _uiState.value.copy(
+                        isVerifyingTotp = false,
+                        errorMessage = exception.message ?: "Failed to verify TOTP code"
+                    )
+                }
+        }
+    }
+
     fun dismissTotpSetup() {
         _uiState.value = _uiState.value.copy(
             showTotpSetup = false,
+            totpSecret = null
+        )
+    }
+
+    fun dismissTotpVerification() {
+        _uiState.value = _uiState.value.copy(
+            showTotpVerification = false,
             totpSecret = null
         )
     }
@@ -170,7 +216,9 @@ data class SecuritySettingsUiState(
     val requiresFaceVerification: Boolean = false,
     val isSettingUpTotp: Boolean = false,
     val isDisablingTotp: Boolean = false,
+    val isVerifyingTotp: Boolean = false,
     val showTotpSetup: Boolean = false,
+    val showTotpVerification: Boolean = false,
     val totpSecret: String? = null,
     val errorMessage: String? = null,
     val successMessage: String? = null
