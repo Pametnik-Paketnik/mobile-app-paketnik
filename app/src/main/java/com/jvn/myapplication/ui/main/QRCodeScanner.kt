@@ -81,27 +81,42 @@ fun QRCodeScanner(
 
 private class QRCodeAnalyzer(private val onQrCodeDetected: (String) -> Unit) : ImageAnalysis.Analyzer {
     private val scanner = BarcodeScanning.getClient()
+    private var isProcessing = false
 
     @androidx.camera.core.ExperimentalGetImage
     override fun analyze(imageProxy: ImageProxy) {
         val mediaImage = imageProxy.image
-        if (mediaImage != null) {
+        if (mediaImage != null && !isProcessing) {
+            isProcessing = true
             val image = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
 
             scanner.process(image)
                 .addOnSuccessListener { barcodes ->
-                    for (barcode in barcodes) {
-                        if (barcode.valueType == Barcode.TYPE_TEXT || barcode.valueType == Barcode.TYPE_URL) {
-                            val rawValue = barcode.rawValue ?: continue
-                            onQrCodeDetected(rawValue)
-                            return@addOnSuccessListener
+                    isProcessing = false
+                    if (barcodes.isNotEmpty()) {
+                        Log.d("QRScanner", "Detected ${barcodes.size} barcode(s)")
+                        for (barcode in barcodes) {
+                            Log.d("QRScanner", "Barcode type: ${barcode.valueType}, value: ${barcode.rawValue}")
+                            if (barcode.valueType == Barcode.TYPE_TEXT || barcode.valueType == Barcode.TYPE_URL) {
+                                val rawValue = barcode.rawValue ?: continue
+                                Log.d("QRScanner", "QR Code detected: $rawValue")
+                                onQrCodeDetected(rawValue)
+                                return@addOnSuccessListener
+                            }
                         }
                     }
+                }
+                .addOnFailureListener { e ->
+                    isProcessing = false
+                    Log.e("QRScanner", "Barcode scanning failed", e)
                 }
                 .addOnCompleteListener {
                     imageProxy.close()
                 }
         } else {
+            if (mediaImage == null) {
+                Log.w("QRScanner", "MediaImage is null")
+            }
             imageProxy.close()
         }
     }

@@ -235,21 +235,8 @@ class UserBoxOpenViewModel(
                         }
                 }
                 BoxAction.CheckOut -> {
-                    // First, update the checkoutAt timestamp to current time
-                    val updateResult = reservationRepository.updateReservationTimestamp(
-                        reservationId = reservation.id,
-                        updateCheckout = true
-                    )
-                    
-                    if (updateResult.isFailure) {
-                        _uiState.value = _uiState.value.copy(
-                            isLoading = false,
-                            errorMessage = "❌ Failed to update checkout time: ${updateResult.exceptionOrNull()?.message}"
-                        )
-                        return@launch
-                    }
-                    
-                    // Then proceed with the actual checkout
+                    // Backend will automatically set actualCheckoutAt when checking out
+                    // We don't need to update the scheduled checkoutAt field
                     reservationRepository.checkOut(reservation.id)
                         .onSuccess { checkOutResponse ->
                             _uiState.value = _uiState.value.copy(

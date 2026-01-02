@@ -21,15 +21,15 @@ object ApiConfig {
     }
     
     // CHANGE THIS BASED ON YOUR TESTING ENVIRONMENT
-    val DEVELOPMENT_MODE = DevelopmentMode.REAL_DEVICE
+    val DEVELOPMENT_MODE = DevelopmentMode.EMULATOR
     
     // Emulator configuration
     private const val EMULATOR_API_BASE = "http://10.0.2.2:3000"
     private const val EMULATOR_MINIO_BASE = "http://10.0.2.2:9000"
     
     // Real device configuration (UPDATE WITH YOUR NGROK URLS)
-    private const val NGROK_API_URL = "https://mammoth-regular-hamster.ngrok-free.app"  // Your API ngrok URL
-    private const val NGROK_MINIO_URL = "https://39dd-176-76-226-209.ngrok-free.app"  // Replace with your MinIO ngrok URL
+    private const val NGROK_API_URL = "http://vitos-macbook-pro:3000"  // Your API ngrok URL
+    private const val NGROK_MINIO_URL = "http://vitos-macbook-pro:9000"  // Replace with your MinIO ngrok URL
     
     // Computed base URLs based on development mode
     val API_BASE_URL: String

@@ -6,5 +6,8 @@
         <domain includeSubdomains="true">127.0.0.1</domain>
         <!-- Add your computer's IP if testing on physical device -->
         <domain includeSubdomains="true">192.168.1.0/24</domain>
+        <!-- Tailscale hostname -->
+        <domain includeSubdomains="true">pegi-ms-7c37</domain>
+        <domain includeSubdomains="true">vitos-macbook-pro</domain>
     </domain-config>
 </network-security-config>
