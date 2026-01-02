@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "860734774933",
-    "project_id": "air-box-paketnik",
-    "storage_bucket": "air-box-paketnik.firebasestorage.app"
+    "project_number": "721288801053",
+    "project_id": "pametnipaketnik-4b073",
+    "storage_bucket": "pametnipaketnik-4b073.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:860734774933:android:03e6dfc4e5405e20ba859c",
+        "mobilesdk_app_id": "1:721288801053:android:0efacd9c4573d38a144ff4",
         "android_client_info": {
           "package_name": "com.jvn.myapplication"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDiiUT3QzpvBzraWlpPgM5w0i2XfaYlJws"
+          "current_key": "AIzaSyCFFSmP8k_csAPFCRdnpIFxtrLEpGPyvN4"
         }
       ],
       "services": {
