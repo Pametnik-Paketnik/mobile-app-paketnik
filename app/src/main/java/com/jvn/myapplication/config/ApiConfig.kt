@@ -52,10 +52,24 @@ object ApiConfig {
         
         return when (DEVELOPMENT_MODE) {
             DevelopmentMode.EMULATOR -> {
-                // Transform localhost URLs for emulator
                 var imageUrl = originalUrl
-                    .replace("localhost:9000", "10.0.2.2:9000")
-                    .replace("127.0.0.1:9000", "10.0.2.2:9000")
+                
+                // Check if this is a backend API URL (new format)
+                val isBackendApiUrl = imageUrl.contains("/api/public/boxes/") || 
+                                     imageUrl.contains("localhost:3000") || 
+                                     imageUrl.contains("127.0.0.1:3000")
+                
+                if (isBackendApiUrl) {
+                    // Transform backend API URLs for emulator
+                    imageUrl = imageUrl
+                        .replace("localhost:3000", "10.0.2.2:3000")
+                        .replace("127.0.0.1:3000", "10.0.2.2:3000")
+                } else {
+                    // Transform MinIO URLs for emulator (old format, backward compatibility)
+                    imageUrl = imageUrl
+                        .replace("localhost:9000", "10.0.2.2:9000")
+                        .replace("127.0.0.1:9000", "10.0.2.2:9000")
+                }
                 
                 // Add HTTP protocol if missing
                 if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
@@ -65,27 +79,52 @@ object ApiConfig {
                 imageUrl
             }
             DevelopmentMode.REAL_DEVICE -> {
-                // Transform to use ngrok URL for real devices
                 var imageUrl = originalUrl
                 
-                // Replace localhost/127.0.0.1 with ngrok URL
-                if (imageUrl.contains("localhost:9000") || imageUrl.contains("127.0.0.1:9000")) {
-                    // Extract the path part (e.g., "/box-images/...")
-                    val pathIndex = imageUrl.indexOf("/box-images")
-                    if (pathIndex != -1) {
-                        val path = imageUrl.substring(pathIndex)
-                        imageUrl = "$NGROK_MINIO_URL$path"
-                    } else {
-                        // Fallback: just replace the base
-                        imageUrl = imageUrl
-                            .replace("localhost:9000", NGROK_MINIO_URL.removePrefix("https://").removePrefix("http://"))
-                            .replace("127.0.0.1:9000", NGROK_MINIO_URL.removePrefix("https://").removePrefix("http://"))
+                // Check if this is a backend API URL (new format)
+                val isBackendApiUrl = imageUrl.contains("/api/public/boxes/") || 
+                                     imageUrl.contains("localhost:3000") || 
+                                     imageUrl.contains("127.0.0.1:3000")
+                
+                if (isBackendApiUrl) {
+                    // Transform backend API URLs to use ngrok API URL
+                    if (imageUrl.contains("localhost:3000") || imageUrl.contains("127.0.0.1:3000")) {
+                        // Extract the path part (e.g., "/api/public/boxes/...")
+                        val pathIndex = imageUrl.indexOf("/api")
+                        if (pathIndex != -1) {
+                            val path = imageUrl.substring(pathIndex)
+                            imageUrl = "$NGROK_API_URL$path"
+                        } else {
+                            // Fallback: just replace the base
+                            val baseUrl = NGROK_API_URL.removePrefix("https://").removePrefix("http://")
+                            imageUrl = imageUrl
+                                .replace("localhost:3000", baseUrl)
+                                .replace("127.0.0.1:3000", baseUrl)
+                        }
+                    }
+                } else {
+                    // Transform MinIO URLs (old format, backward compatibility)
+                    if (imageUrl.contains("localhost:9000") || imageUrl.contains("127.0.0.1:9000")) {
+                        // Extract the path part (e.g., "/box-images/...")
+                        val pathIndex = imageUrl.indexOf("/box-images")
+                        if (pathIndex != -1) {
+                            val path = imageUrl.substring(pathIndex)
+                            imageUrl = "$NGROK_MINIO_URL$path"
+                        } else {
+                            // Fallback: just replace the base
+                            val baseUrl = NGROK_MINIO_URL.removePrefix("https://").removePrefix("http://")
+                            imageUrl = imageUrl
+                                .replace("localhost:9000", baseUrl)
+                                .replace("127.0.0.1:9000", baseUrl)
+                        }
                     }
                 }
                 
                 // Ensure protocol is present
                 if (!imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
-                    imageUrl = if (NGROK_MINIO_URL.startsWith("https://")) {
+                    // Determine protocol based on which URL we're using
+                    val baseUrl = if (isBackendApiUrl) NGROK_API_URL else NGROK_MINIO_URL
+                    imageUrl = if (baseUrl.startsWith("https://")) {
                         "https://$imageUrl"
                     } else {
                         "http://$imageUrl"
