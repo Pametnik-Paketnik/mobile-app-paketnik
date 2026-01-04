@@ -42,12 +42,10 @@ public class GA {
             TSP.Tour elite = getBestInPopulation();
             offspring.add(elite.clone());
 
-            // Polnimo populacijo do velikosti popSize
             while (offspring.size() < popSize) {
                 TSP.Tour parent1 = tournamentSelection();
                 TSP.Tour parent2 = tournamentSelection();
                 //TODO preveri, da starša nista enaka (po referenci ali vsebini)
-                // Če sta enaka, poskusimo izbrati drugega (samo 1x poskus, da ne ciklamo v nedogled)
                 if (parent1 == parent2) {
                     parent2 = tournamentSelection();
                 }
@@ -66,8 +64,6 @@ public class GA {
             }
 
             // MUTACIJA
-            // Gremo čez vse potomce (razen prvega, ki je elite!)
-            // Začnemo z i=1, ker i=0 je elitni posameznik, ki ga ne smemo pokvariti
             for (int i = 1; i < offspring.size(); i++) {
                 if (RandomUtils.nextDouble() < pm) {
                     swapMutation(offspring.get(i));
@@ -88,7 +84,6 @@ public class GA {
         return best;
     }
 
-    // Pomožna metoda za iskanje najboljšega v trenutni populaciji (za elitizem)
     private TSP.Tour getBestInPopulation() {
         TSP.Tour bestLocal = population.get(0);
         for (TSP.Tour t : population) {
@@ -100,20 +95,73 @@ public class GA {
     }
 
     private void swapMutation(TSP.Tour tour) {
-        // Izberemo dva naključna indeksa v poti
         int dimension = tour.getPath().length;
         int i = RandomUtils.nextInt(dimension);
         int j = RandomUtils.nextInt(dimension);
 
-        // Zamenjamo mesti
         TSP.City temp = tour.getPath()[i];
         tour.setCity(i, tour.getPath()[j]);
         tour.setCity(j, temp);
     }
 
     private TSP.Tour[] pmx(TSP.Tour parent1, TSP.Tour parent2) {
-        //izvedi pmx križanje, da ustvariš dva potomca
-        return null;
+        int size = parent1.getPath().length;
+        TSP.Tour child1 = new TSP.Tour(size);
+        TSP.Tour child2 = new TSP.Tour(size);
+
+        int cut1 = RandomUtils.nextInt(size);
+        int cut2 = RandomUtils.nextInt(size);
+
+        if (cut1 > cut2) {
+            int temp = cut1;
+            cut1 = cut2;
+            cut2 = temp;
+        }
+
+        for (int i = cut1; i <= cut2; i++) {
+            child1.setCity(i, parent1.getPath()[i]);
+            child2.setCity(i, parent2.getPath()[i]);
+        }
+
+        fillRest(child1, parent2, cut1, cut2, parent1);
+        fillRest(child2, parent1, cut1, cut2, parent2);
+
+        return new TSP.Tour[]{child1, child2};
+    }
+
+    private void fillRest(TSP.Tour child, TSP.Tour sourceParent, int cut1, int cut2, TSP.Tour mappingParent) {
+        int size = child.getPath().length;
+
+        for (int i = 0; i < size; i++) {
+            if (i >= cut1 && i <= cut2) continue;
+
+            TSP.City candidate = sourceParent.getPath()[i];
+
+            while (contains(child, candidate, cut1, cut2)) {
+                int indexInMappingParent = findIndex(mappingParent, candidate);
+                candidate = sourceParent.getPath()[indexInMappingParent];
+            }
+
+            child.setCity(i, candidate);
+        }
+    }
+
+    private boolean contains(TSP.Tour tour, TSP.City city, int start, int end) {
+        for (int i = start; i <= end; i++) {
+            if (tour.getPath()[i].index == city.index) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int findIndex(TSP.Tour tour, TSP.City city) {
+        for (int i = 0; i < tour.getPath().length; i++) {
+            if (tour.getPath()[i].index == city.index) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     private TSP.Tour tournamentSelection() {

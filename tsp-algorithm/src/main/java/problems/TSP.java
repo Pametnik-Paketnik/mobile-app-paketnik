@@ -17,7 +17,7 @@ public class TSP {
         public double x, y;
     }
 
-    public class Tour {
+    public static class Tour {
 
         double distance;
         int dimension;
