@@ -46,8 +46,13 @@ public class GA {
             while (offspring.size() < popSize) {
                 TSP.Tour parent1 = tournamentSelection();
                 TSP.Tour parent2 = tournamentSelection();
-                //TODO preveri, da starša nista enaka
+                //TODO preveri, da starša nista enaka (po referenci ali vsebini)
+                // Če sta enaka, poskusimo izbrati drugega (samo 1x poskus, da ne ciklamo v nedogled)
+                if (parent1 == parent2) {
+                    parent2 = tournamentSelection();
+                }
 
+                // KRIŽANJE (Crossover)
                 if (RandomUtils.nextDouble() < cr) {
                     TSP.Tour[] children = pmx(parent1, parent2);
                     offspring.add(children[0]);
@@ -96,7 +101,17 @@ public class GA {
     }
 
     private TSP.Tour tournamentSelection() {
-        // naključno izberi dva RAZLIČNA posameznika in vrni boljšega
-        return null;
+        TSP.Tour best = null;
+
+        int tournamentSize = 3;
+        for (int i = 0; i < tournamentSize; i++) {
+            int randomIdx = RandomUtils.nextInt(population.size());
+            TSP.Tour candidate = population.get(randomIdx);
+
+            if (best == null || candidate.getDistance() < best.getDistance()) {
+                best = candidate;
+            }
+        }
+        return best;
     }
 }
