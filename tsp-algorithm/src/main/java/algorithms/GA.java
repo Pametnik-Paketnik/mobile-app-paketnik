@@ -37,7 +37,12 @@ public class GA {
 
         while (problem.getNumberOfEvaluations() < problem.getMaxEvaluations()) {
 
-            //elitizem - poišči najboljšega in ga dodaj v offspring in obvezno uporabi clone()
+            //elitizem - poišči najboljšega in ga dodaj v novo
+            // (Clone je nujen, da ne spreminjamo reference!)
+            TSP.Tour elite = getBestInPopulation();
+            offspring.add(elite.clone());
+
+            // Polnimo populacijo do velikosti popSize
             while (offspring.size() < popSize) {
                 TSP.Tour parent1 = tournamentSelection();
                 TSP.Tour parent2 = tournamentSelection();
@@ -68,6 +73,17 @@ public class GA {
             offspring.clear();
         }
         return best;
+    }
+
+    // Pomožna metoda za iskanje najboljšega v trenutni populaciji (za elitizem)
+    private TSP.Tour getBestInPopulation() {
+        TSP.Tour bestLocal = population.get(0);
+        for (TSP.Tour t : population) {
+            if (t.getDistance() < bestLocal.getDistance()) {
+                bestLocal = t;
+            }
+        }
+        return bestLocal;
     }
 
     private void swapMutation(TSP.Tour off) {
