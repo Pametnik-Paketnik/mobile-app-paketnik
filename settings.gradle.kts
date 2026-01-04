@@ -21,4 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Pametni_Paketnik"
 include(":app")
- 
+include(":tsp-algorithm")
