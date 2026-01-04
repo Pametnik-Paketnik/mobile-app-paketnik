@@ -74,8 +74,13 @@ public class GA {
                 }
             }
 
-            //TODO ovrednoti populacijo in shrani najboljšega (best)
-            //implementacijo lahko naredimo bolj učinkovito tako, da overdnotimo samo tiste, ki so se spremenili (mutirani in križani potomci)
+            for (TSP.Tour tour : offspring) {
+                problem.evaluate(tour);
+                assert best != null;
+                if (tour.getDistance() < best.getDistance()) {
+                    best = tour.clone();
+                }
+            }
 
             population = new ArrayList<>(offspring);
             offspring.clear();
