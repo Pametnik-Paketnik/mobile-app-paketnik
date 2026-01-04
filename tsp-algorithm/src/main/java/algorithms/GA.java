@@ -29,7 +29,10 @@ public class GA {
             TSP.Tour newTour = problem.generateTour();
             problem.evaluate(newTour);
             population.add(newTour);
-            //TODO shrani najboljšega (best)
+
+            if (best == null || newTour.getDistance() < best.getDistance()) {
+                best = newTour.clone();
+            }
         }
 
         while (problem.getNumberOfEvaluations() < problem.getMaxEvaluations()) {
