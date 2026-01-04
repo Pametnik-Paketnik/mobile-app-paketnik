@@ -6,6 +6,8 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
+import Utility.RandomUtils;
+
 public class TSP {
 
     enum DistanceType {EUCLIDEAN, WEIGHTED}
@@ -103,8 +105,21 @@ public class TSP {
     }
 
     public Tour generateTour() {
-        //TODO generate random tour, use RandomUtils
-        return null;
+        Tour tour = new Tour(numberOfCities);
+
+        for (int i = 0; i < numberOfCities; i++) {
+            tour.setCity(i, cities.get(i));
+        }
+
+        for (int i = numberOfCities - 1; i > 0; i--) {
+            int index = RandomUtils.nextInt(i + 1);
+
+            City a = tour.getPath()[index];
+            tour.getPath()[index] = tour.getPath()[i];
+            tour.getPath()[i] = a;
+        }
+
+        return tour;
     }
 
     private void loadData(String path) {
