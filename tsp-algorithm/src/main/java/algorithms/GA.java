@@ -65,9 +65,12 @@ public class GA {
                 }
             }
 
-            for (TSP.Tour off : offspring) {
+            // MUTACIJA
+            // Gremo čez vse potomce (razen prvega, ki je elite!)
+            // Začnemo z i=1, ker i=0 je elitni posameznik, ki ga ne smemo pokvariti
+            for (int i = 1; i < offspring.size(); i++) {
                 if (RandomUtils.nextDouble() < pm) {
-                    swapMutation(off);
+                    swapMutation(offspring.get(i));
                 }
             }
 
@@ -91,8 +94,16 @@ public class GA {
         return bestLocal;
     }
 
-    private void swapMutation(TSP.Tour off) {
-        //izvedi mutacijo
+    private void swapMutation(TSP.Tour tour) {
+        // Izberemo dva naključna indeksa v poti
+        int dimension = tour.getPath().length;
+        int i = RandomUtils.nextInt(dimension);
+        int j = RandomUtils.nextInt(dimension);
+
+        // Zamenjamo mesti
+        TSP.City temp = tour.getPath()[i];
+        tour.setCity(i, tour.getPath()[j]);
+        tour.setCity(j, temp);
     }
 
     private TSP.Tour[] pmx(TSP.Tour parent1, TSP.Tour parent2) {
