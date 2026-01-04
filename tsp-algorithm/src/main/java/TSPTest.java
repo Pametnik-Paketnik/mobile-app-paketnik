@@ -11,7 +11,8 @@ public class TSPTest {
             System.currentTimeMillis();
             // primer zagona za problem eil101.tsp
             for (int i = 0; i < 30; i++) {
-                TSP eilTsp = new TSP("eil101.tsp", 10000);
+                //TSP eilTsp = new TSP("eil101.tsp", 10000);
+                TSP eilTsp = new TSP("bays29.tsp", 10000);
                 GA ga = new GA(100, 0.8, 0.1);
                 TSP.Tour bestPath = ga.execute(eilTsp);
             }
