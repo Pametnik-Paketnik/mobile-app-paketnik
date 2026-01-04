@@ -88,12 +88,15 @@ public class TSP {
     }
 
     private double calculateDistance(City from, City to) {
-        //TODO implement
         switch (distanceType) {
             case EUCLIDEAN:
-                return 0;
+                double dx = from.x - to.x;
+                double dy = from.y - to.y;
+                return Math.sqrt(dx * dx + dy * dy);
+
             case WEIGHTED:
-                return 0;
+                return weights[from.index - 1][to.index - 1];
+
             default:
                 return Double.MAX_VALUE;
         }
