@@ -1,0 +1,192 @@
+01:07:45: Executing ':tsp-algorithm:TSPTest.main()'…
+
+Executing tasks: [:tsp-algorithm:TSPTest.main()] in project /Users/vitosenic/Documents/FAKS/pametniPaketnik/mobi-paketnik/tsp-algorithm
+
+> Task :tsp-algorithm:compileJava
+> Task :tsp-algorithm:processResources UP-TO-DATE
+> Task :tsp-algorithm:classes
+
+> Task :tsp-algorithm:TSPTest.main()
+Seed: 1767571665837
+--------------------------------------------------
+Processing: bays29.tsp
+  Cities (d): 29
+  MaxFes: 29000
+    Run  1: 2454.0000
+    Run  2: 2452.0000
+    Run  3: 2549.0000
+    Run  4: 2344.0000
+    Run  5: 2447.0000
+    Run  6: 2979.0000
+    Run  7: 2365.0000
+    Run  8: 2580.0000
+    Run  9: 2459.0000
+    Run 10: 2515.0000
+    Run 11: 2745.0000
+    Run 12: 2590.0000
+    Run 13: 2522.0000
+    Run 14: 2657.0000
+    Run 15: 2418.0000
+    Run 16: 2544.0000
+    Run 17: 2821.0000
+    Run 18: 2562.0000
+    Run 19: 2348.0000
+    Run 20: 2457.0000
+    Run 21: 2550.0000
+    Run 22: 2611.0000
+    Run 23: 2455.0000
+    Run 24: 2742.0000
+    Run 25: 2434.0000
+    Run 26: 2249.0000
+    Run 27: 2922.0000
+    Run 28: 2524.0000
+    Run 29: 2728.0000
+    Run 30: 2420.0000
+  -> Saved to: tsp-algorithm/results/AirBox_bays29.txt
+--------------------------------------------------
+Processing: eil101.tsp
+  Cities (d): 101
+  MaxFes: 101000
+    Run  1: 1219.7606
+    Run  2: 1116.1219
+    Run  3: 1141.2124
+    Run  4: 1041.7224
+    Run  5: 1104.4832
+    Run  6: 1119.3368
+    Run  7: 1116.7553
+    Run  8: 1167.6105
+    Run  9: 1147.1116
+    Run 10: 1172.4410
+    Run 11: 1078.6917
+    Run 12: 1160.4069
+    Run 13: 1131.9691
+    Run 14: 1173.9762
+    Run 15: 1164.9378
+    Run 16: 1095.7762
+    Run 17: 1153.1110
+    Run 18: 1149.5449
+    Run 19: 1064.0610
+    Run 20: 1115.8423
+    Run 21: 1024.7476
+    Run 22: 1125.3812
+    Run 23: 1147.9749
+    Run 24: 1139.2104
+    Run 25: 1166.2725
+    Run 26: 1274.6214
+    Run 27: 1137.7539
+    Run 28: 1149.0644
+    Run 29: 1094.8863
+    Run 30: 1132.3416
+  -> Saved to: tsp-algorithm/results/AirBox_eil101.txt
+--------------------------------------------------
+Processing: a280.tsp
+  Cities (d): 280
+  MaxFes: 280000
+    Run  1: 9661.0436
+    Run  2: 9632.8813
+    Run  3: 9310.1259
+    Run  4: 9633.5657
+    Run  5: 9209.2806
+    Run  6: 9100.4467
+    Run  7: 9235.4861
+    Run  8: 9358.7035
+    Run  9: 9172.9319
+    Run 10: 9249.8963
+    Run 11: 9430.5563
+    Run 12: 9242.6122
+    Run 13: 9734.0861
+    Run 14: 9517.9790
+    Run 15: 9337.2057
+    Run 16: 9947.4524
+    Run 17: 9081.9019
+    Run 18: 9671.0000
+    Run 19: 9907.1321
+    Run 20: 9338.3115
+    Run 21: 8777.3234
+    Run 22: 9680.8068
+    Run 23: 9528.4551
+    Run 24: 9657.5446
+    Run 25: 9344.7767
+    Run 26: 9244.3280
+    Run 27: 9514.6983
+    Run 28: 9455.1886
+    Run 29: 8378.8052
+    Run 30: 9122.7555
+  -> Saved to: tsp-algorithm/results/AirBox_a280.txt
+--------------------------------------------------
+Processing: pr1002.tsp
+  Cities (d): 1002
+  MaxFes: 1002000
+    Run  1: 1806499.7715
+    Run  2: 1759841.0907
+    Run  3: 1773533.1610
+    Run  4: 1748845.3128
+    Run  5: 1735527.2885
+    Run  6: 1799348.3978
+    Run  7: 1745261.8224
+    Run  8: 1793222.7724
+    Run  9: 1660956.3404
+    Run 10: 1782415.0796
+    Run 11: 1773172.6483
+    Run 12: 1773755.5539
+    Run 13: 1741513.3613
+    Run 14: 1703424.0597
+    Run 15: 1772589.1658
+    Run 16: 1641142.9166
+    Run 17: 1827282.2412
+    Run 18: 1695467.5678
+    Run 19: 1789734.3138
+    Run 20: 1745842.6053
+    Run 21: 1719308.3649
+    Run 22: 1782611.2384
+    Run 23: 1762788.1619
+    Run 24: 1782529.6217
+    Run 25: 1721582.2817
+    Run 26: 1735003.6438
+    Run 27: 1717273.8944
+    Run 28: 1773361.7210
+    Run 29: 1820873.3632
+    Run 30: 1770795.0654
+  -> Saved to: tsp-algorithm/results/AirBox_pr1002.txt
+--------------------------------------------------
+Processing: dca1389.tsp
+  Cities (d): 1389
+  MaxFes: 1389000
+    Run  1: 44059.5039
+    Run  2: 44243.9841
+    Run  3: 43242.5613
+    Run  4: 44770.3353
+    Run  5: 46254.1788
+    Run  6: 46064.6823
+    Run  7: 45266.3852
+    Run  8: 45502.3259
+    Run  9: 45800.3583
+    Run 10: 43795.7891
+    Run 11: 44040.4639
+    Run 12: 43509.0043
+    Run 13: 43459.5927
+    Run 14: 45343.5309
+    Run 15: 46897.8219
+    Run 16: 43820.1158
+    Run 17: 46286.2589
+    Run 18: 42537.3861
+    Run 19: 43575.6927
+    Run 20: 44628.4538
+    Run 21: 44690.4823
+    Run 22: 44630.0004
+    Run 23: 45417.6738
+    Run 24: 45327.2221
+    Run 25: 43708.4818
+    Run 26: 46090.8135
+    Run 27: 44622.2955
+    Run 28: 44676.3246
+    Run 29: 43898.9301
+    Run 30: 46208.9964
+  -> Saved to: tsp-algorithm/results/AirBox_dca1389.txt
+DONE!
+
+BUILD SUCCESSFUL in 2h 58m 28s
+3 actionable tasks: 2 executed, 1 up-to-date
+
+Build Analyzer results available
+04:06:13: Execution finished ':tsp-algorithm:TSPTest.main()'.
