@@ -248,4 +248,8 @@ public class TSP {
     public int getNumberOfEvaluations() {
         return numberOfEvaluations;
     }
+
+    public int getNumberOfCities() {
+        return numberOfCities;
+    }
 }
