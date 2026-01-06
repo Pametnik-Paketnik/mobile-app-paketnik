@@ -4,6 +4,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class BottomNavItem(
@@ -23,6 +24,12 @@ sealed class BottomNavItem(
         icon = Icons.Default.Info
     )
     
+    object Map : BottomNavItem(
+        route = "map",
+        title = "Map",
+        icon = Icons.Default.Place
+    )
+    
     object UserSettings : BottomNavItem(
         route = "user_settings",
         title = "Settings",
@@ -33,5 +40,6 @@ sealed class BottomNavItem(
 val bottomNavItems = listOf(
     BottomNavItem.Home,
     BottomNavItem.BoxesHistory,
+    BottomNavItem.Map,
     BottomNavItem.UserSettings
 ) 

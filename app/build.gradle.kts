@@ -1,9 +1,19 @@
+import java.util.Properties
+import java.io.FileInputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
 }
+
+val localPropertiesFile = rootProject.file("local.properties")
+val localProperties = Properties()
+if (localPropertiesFile.exists()) {
+    FileInputStream(localPropertiesFile).use { localProperties.load(it) }
+}
+val googleApiKey = localProperties.getProperty("GOOGLE_API_KEY") ?: ""
 
 android {
     namespace = "com.jvn.myapplication"
@@ -17,6 +27,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        
+        buildConfigField("String", "GOOGLE_API_KEY", "\"$googleApiKey\"")
+        manifestPlaceholders["GOOGLE_API_KEY"] = googleApiKey
     }
 
     buildTypes {
@@ -37,6 +50,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -75,7 +89,6 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
-    // Lifecycle Compose for LocalLifecycleOwner
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
 
     implementation("androidx.datastore:datastore-preferences:1.0.0")
@@ -88,22 +101,25 @@ dependencies {
 
     implementation ("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.7.3")
 
-    // Navigation Compose for bottom tabs
     implementation("androidx.navigation:navigation-compose:2.7.6")
     implementation("androidx.navigation:navigation-runtime-ktx:2.7.6")
 
-    // Firebase and Push Notifications
     implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
     implementation("com.google.firebase:firebase-messaging-ktx")
     implementation("com.google.firebase:firebase-analytics-ktx")
     
-    // Work Manager for background tasks
     implementation("androidx.work:work-runtime-ktx:2.9.0")
 
-    // Coil for image loading
     implementation("io.coil-kt:coil-compose:2.5.0")
     
-    // Foundation for HorizontalPager
     implementation("androidx.compose.foundation:foundation:1.5.4")
+    
+    implementation(project(":tsp-algorithm"))
+    
+    implementation("com.google.android.gms:play-services-maps:18.2.0")
+    implementation("com.google.android.gms:play-services-location:21.0.1")
+    implementation("com.google.maps.android:maps-compose:4.3.0")
+    implementation("com.google.maps.android:maps-compose-utils:4.3.0")
+    implementation("com.google.maps.android:android-maps-utils:3.8.2")
 
 }

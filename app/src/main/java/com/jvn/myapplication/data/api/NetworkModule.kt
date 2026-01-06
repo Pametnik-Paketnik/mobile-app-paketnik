@@ -63,4 +63,16 @@ object NetworkModule {
     val totpApi: TotpApiService by lazy {
         retrofit.create(TotpApiService::class.java)
     }
+
+    private val directionsRetrofit: Retrofit by lazy {
+        Retrofit.Builder()
+            .baseUrl("https://maps.googleapis.com/maps/api/")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+    
+    val directionsApi: DirectionsApiService by lazy {
+        directionsRetrofit.create(DirectionsApiService::class.java)
+    }
 }
