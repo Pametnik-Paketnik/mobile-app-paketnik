@@ -105,5 +105,8 @@ dependencies {
     
     // Foundation for HorizontalPager
     implementation("androidx.compose.foundation:foundation:1.5.4")
+    
+    // TSP Algorithm module
+    implementation(project(":tsp-algorithm"))
 
 }
