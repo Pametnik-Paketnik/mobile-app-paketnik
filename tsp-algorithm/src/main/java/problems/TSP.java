@@ -162,12 +162,12 @@ public class TSP {
                 }
             }
             if (!found) {
-                System.err.println("OPOZORILO: Nisem našel mesta z ID: " + targetRealId);
+                System.err.println("Warning: City with ID not found: " + targetRealId);
             }
         }
 
         if (subProblem.cities.isEmpty()) {
-            throw new RuntimeException("Napaka pri generiranju sub-problema: Nobenega mesta nisem našel! Preveri realId v loadData.");
+            throw new RuntimeException("Error generating sub-problem: No cities found! Check realId in loadData.");
         }
 
         for (int i = 0; i < newSize; i++) {

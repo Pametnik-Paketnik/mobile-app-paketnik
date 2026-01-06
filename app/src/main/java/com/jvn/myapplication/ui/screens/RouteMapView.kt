@@ -26,12 +26,10 @@ fun RouteMapView(
     val cardWhite = Color(0xFFFFFFFF)
     val textDark = Color(0xFF484848)
     
-    // Calculate center of all locations for initial camera position
     val centerLat = result.routeLocations.map { it.latitude }.average()
     val centerLng = result.routeLocations.map { it.longitude }.average()
     val center = LatLng(centerLat, centerLng)
     
-    // Calculate bounds for camera
     val minLat = result.routeLocations.minOfOrNull { it.latitude } ?: centerLat
     val maxLat = result.routeLocations.maxOfOrNull { it.latitude } ?: centerLat
     val minLng = result.routeLocations.minOfOrNull { it.longitude } ?: centerLng
@@ -41,7 +39,6 @@ fun RouteMapView(
         position = CameraPosition.fromLatLngZoom(center, 10f)
     }
     
-    // Decode polyline
     val polylinePoints = remember(result.polylinePoints) {
         if (result.polylinePoints.isNotEmpty()) {
             try {
@@ -55,7 +52,6 @@ fun RouteMapView(
         }
     }
     
-    // Fit camera to bounds when locations are available
     LaunchedEffect(result.routeLocations) {
         if (result.routeLocations.isNotEmpty()) {
             val points = result.routeLocations.map { 
@@ -75,7 +71,6 @@ fun RouteMapView(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState
         ) {
-            // Draw polyline
             if (polylinePoints.isNotEmpty()) {
                 Polyline(
                     points = polylinePoints,
@@ -84,20 +79,19 @@ fun RouteMapView(
                 )
             }
             
-            // Add markers for each location
             result.routeLocations.forEachIndexed { index, location ->
+                val isStartLocation = result.startLocationId == location.id && index == 0
                 Marker(
                     state = MarkerState(position = LatLng(location.latitude, location.longitude)),
                     title = location.address,
-                    snippet = "Stop ${index + 1}",
+                    snippet = if (isStartLocation) "START - Stop ${index + 1}" else "Stop ${index + 1}",
                     icon = BitmapDescriptorFactory.defaultMarker(
-                        BitmapDescriptorFactory.HUE_RED
+                        if (isStartLocation) BitmapDescriptorFactory.HUE_GREEN else BitmapDescriptorFactory.HUE_RED
                     )
                 )
             }
         }
         
-        // Info card at the bottom
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -117,36 +111,36 @@ fun RouteMapView(
                     color = textDark
                 )
                 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Column {
-                        Text(
-                            text = "Total Distance",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = textDark
-                        )
-                        Text(
-                            text = String.format("%.2f km", result.totalDistanceKm),
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = airbnbRed
-                        )
+                when (result.optimizationType) {
+                    OptimizationType.DISTANCE -> {
+                        Column {
+                            Text(
+                                text = "Total Distance",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = textDark
+                            )
+                            Text(
+                                text = String.format("%.2f km", result.totalDistanceKm),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = airbnbRed
+                            )
+                        }
                     }
-                    
-                    Column {
-                        Text(
-                            text = "Total Time",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = textDark
-                        )
-                        Text(
-                            text = formatTime(result.totalTimeSeconds),
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = airbnbRed
-                        )
+                    OptimizationType.TIME -> {
+                        Column {
+                            Text(
+                                text = "Total Time",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = textDark
+                            )
+                            Text(
+                                text = formatTime(result.totalTimeSeconds),
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = airbnbRed
+                            )
+                        }
                     }
                 }
                 

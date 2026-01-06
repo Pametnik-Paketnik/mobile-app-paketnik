@@ -63,8 +63,7 @@ object NetworkModule {
     val totpApi: TotpApiService by lazy {
         retrofit.create(TotpApiService::class.java)
     }
-    
-    // Directions API uses different base URL
+
     private val directionsRetrofit: Retrofit by lazy {
         Retrofit.Builder()
             .baseUrl("https://maps.googleapis.com/maps/api/")

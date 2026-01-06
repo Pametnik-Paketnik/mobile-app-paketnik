@@ -6,9 +6,6 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 
 object AssetReader {
-    /**
-     * Reads the direct4me_locations.csv file from assets and returns a list of Location objects
-     */
     fun readLocationsFromAssets(context: Context): List<Location> {
         val locations = mutableListOf<Location>()
         
@@ -16,10 +13,8 @@ object AssetReader {
             val inputStream = context.assets.open("direct4me_locations.csv")
             val reader = BufferedReader(InputStreamReader(inputStream, "UTF-8"))
             
-            // Skip header line
             reader.readLine()
             
-            // Read each line
             var line: String?
             while (reader.readLine().also { line = it } != null) {
                 line?.let { parseLocationLine(it) }?.let { locations.add(it) }
@@ -34,9 +29,6 @@ object AssetReader {
         return locations
     }
     
-    /**
-     * Parses a single CSV line (format: ID;Address;Latitude;Longitude)
-     */
     private fun parseLocationLine(line: String): Location? {
         return try {
             val parts = line.split(";")

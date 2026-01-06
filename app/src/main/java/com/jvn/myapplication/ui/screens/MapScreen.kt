@@ -28,7 +28,6 @@ import com.jvn.myapplication.utils.AssetReader
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MapScreen() {
-    // Airbnb-style color palette
     val airbnbRed = Color(0xFFFF5A5F)
     val darkGray = Color(0xFF484848)
     val lightGray = Color(0xFFF7F7F7)
@@ -40,30 +39,26 @@ fun MapScreen() {
     val viewModel: MapViewModel = viewModel { MapViewModel(context) }
     val uiState by viewModel.uiState.collectAsState()
 
-    // Load locations from assets
     var locations by remember { mutableStateOf<List<Location>>(emptyList()) }
     var selectedLocationIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
+    var startLocationId by remember { mutableStateOf<Int?>(null) }
     var isContentVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
     var showMap by remember { mutableStateOf(false) }
 
-    // Automatically show map when result is available
     LaunchedEffect(uiState.result, uiState.isLoading) {
         if (uiState.result != null && !uiState.isLoading) {
             showMap = true
         }
     }
 
-    // GA Parameters
     var populationSize by remember { mutableStateOf(100) }
     var crossoverRate by remember { mutableStateOf(0.8f) }
     var mutationRate by remember { mutableStateOf(0.1f) }
     var optimizationType by remember { mutableStateOf(OptimizationType.DISTANCE) }
 
     LaunchedEffect(Unit) {
-        // Load locations from CSV
         locations = AssetReader.readLocationsFromAssets(context)
-        // Select all locations by default
         selectedLocationIds = locations.map { it.id }.toSet()
         isLoading = false
         kotlinx.coroutines.delay(200)
@@ -78,11 +73,9 @@ fun MapScreen() {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Clean header with solid color
             Box(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // Solid background
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -90,7 +83,6 @@ fun MapScreen() {
                         .background(airbnbRed)
                 )
 
-                // Header content
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -109,7 +101,6 @@ fun MapScreen() {
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            // Horizontal layout: icon next to text
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.Center
@@ -142,10 +133,9 @@ fun MapScreen() {
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
-            // Content area - List of locations with checkboxes
-            when {
+        when {
                 isLoading -> {
                     Box(
                         modifier = Modifier
@@ -194,10 +184,9 @@ fun MapScreen() {
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(horizontal = 16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            // Selection info
-                            item {
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        item {
                                 if (selectedLocationIds.isNotEmpty()) {
                                     Card(
                                         modifier = Modifier
@@ -225,10 +214,9 @@ fun MapScreen() {
                                         )
                                     }
                                 }
-                            }
+                        }
 
-                            // GA Parameters Card
-                            item {
+                        item {
                                 GAParametersCard(
                                     populationSize = populationSize,
                                     crossoverRate = crossoverRate,
@@ -237,27 +225,26 @@ fun MapScreen() {
                                     onCrossoverRateChange = { crossoverRate = it },
                                     onMutationRateChange = { mutationRate = it }
                                 )
-                            }
+                        }
 
-                            // Optimization Type Selection
-                            item {
+                        item {
                                 OptimizationTypeCard(
                                     selectedType = optimizationType,
                                     onTypeSelected = { optimizationType = it }
                                 )
-                            }
+                        }
 
-                            // Calculate Button
-                            item {
+                        item {
                                 Button(
                                     onClick = {
-                                        viewModel.calculateRoute(
-                                            selectedLocationIds = selectedLocationIds.toList(),
-                                            optimizationType = optimizationType,
-                                            populationSize = populationSize,
-                                            crossoverRate = crossoverRate.toDouble(),
-                                            mutationRate = mutationRate.toDouble()
-                                        )
+                                    viewModel.calculateRoute(
+                                        selectedLocationIds = selectedLocationIds.toList(),
+                                        startLocationId = startLocationId,
+                                        optimizationType = optimizationType,
+                                        populationSize = populationSize,
+                                        crossoverRate = crossoverRate.toDouble(),
+                                        mutationRate = mutationRate.toDouble()
+                                    )
                                     },
                                     modifier = Modifier.fillMaxWidth(),
                                     enabled = !uiState.isLoading && selectedLocationIds.isNotEmpty(),
@@ -275,10 +262,9 @@ fun MapScreen() {
                                         Text("Calculate Route")
                                     }
                                 }
-                            }
+                        }
 
-                            // Error Message
-                            item {
+                        item {
                                 uiState.errorMessage?.let { error ->
                                     Card(
                                         modifier = Modifier.fillMaxWidth(),
@@ -297,10 +283,9 @@ fun MapScreen() {
                                         )
                                     }
                                 }
-                            }
+                        }
 
-                            // Locations list header
-                            item {
+                        item {
                                 Text(
                                     text = "Select Locations:",
                                     style = MaterialTheme.typography.titleMedium,
@@ -310,22 +295,84 @@ fun MapScreen() {
                                 )
                             }
 
-                            // Locations list
+                            item {
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .shadow(
+                                            elevation = 4.dp,
+                                            shape = RoundedCornerShape(12.dp),
+                                            ambientColor = Color.Black.copy(alpha = 0.1f),
+                                            spotColor = Color.Black.copy(alpha = 0.1f)
+                                        ),
+                                    colors = CardDefaults.cardColors(containerColor = cardWhite),
+                                    shape = RoundedCornerShape(12.dp),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                                ) {
+                                    Column(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Text(
+                                            text = "Start Location",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = textDark
+                                        )
+                                        if (startLocationId != null) {
+                                            val startLocation = locations.find { it.id == startLocationId }
+                                            if (startLocation != null) {
+                                                Text(
+                                                    text = startLocation.address,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = airbnbRed,
+                                                    fontWeight = FontWeight.Medium
+                                                )
+                                                TextButton(
+                                                    onClick = { startLocationId = null },
+                                                    colors = ButtonDefaults.textButtonColors(contentColor = textLight)
+                                                ) {
+                                                    Text("Clear")
+                                                }
+                                            }
+                                        } else {
+                                            Text(
+                                                text = "No start location selected",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = textLight
+                                            )
+                                            Text(
+                                                text = "Long press on a location to set as start",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = textLight
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
                             items(locations) { location ->
                                 LocationCard(
                                     location = location,
                                     isSelected = selectedLocationIds.contains(location.id),
+                                    isStartLocation = startLocationId == location.id,
                                     onSelectionChange = { isSelected ->
                                         selectedLocationIds = if (isSelected) {
                                             selectedLocationIds + location.id
                                         } else {
                                             selectedLocationIds - location.id
                                         }
+                                    },
+                                    onStartLocationChange = { 
+                                        if (startLocationId == location.id) {
+                                            startLocationId = null
+                                        } else {
+                                            startLocationId = location.id
+                                        }
                                     }
                                 )
                             }
 
-                            // Bottom padding for navigation bar
                             item {
                                 Spacer(modifier = Modifier.height(80.dp))
                             }
@@ -335,8 +382,6 @@ fun MapScreen() {
             }
         }
         
-        // Show map overlay when result is available and showMap is true
-        // This needs to be outside the Column to overlay properly
         uiState.result?.let { result ->
             if (showMap) {
                 RouteMapOverlay(
@@ -360,7 +405,6 @@ fun RouteMapOverlay(
             modifier = Modifier.fillMaxSize()
         )
 
-        // Back button
         FloatingActionButton(
             onClick = onBackClick,
             modifier = Modifier
@@ -381,13 +425,16 @@ fun RouteMapOverlay(
 fun LocationCard(
     location: Location,
     isSelected: Boolean,
-    onSelectionChange: (Boolean) -> Unit
+    isStartLocation: Boolean = false,
+    onSelectionChange: (Boolean) -> Unit,
+    onStartLocationChange: () -> Unit = {}
 ) {
     val airbnbRed = Color(0xFFFF5A5F)
+    val successGreen = Color(0xFF00A699)
     val cardWhite = Color(0xFFFFFFFF)
     val textDark = Color(0xFF484848)
     val textLight = Color(0xFF767676)
-
+    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -398,7 +445,11 @@ fun LocationCard(
                 spotColor = Color.Black.copy(alpha = 0.1f)
             ),
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) airbnbRed.copy(alpha = 0.05f) else cardWhite
+            containerColor = when {
+                isStartLocation -> successGreen.copy(alpha = 0.15f)
+                isSelected -> airbnbRed.copy(alpha = 0.05f)
+                else -> cardWhite
+            }
         ),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
@@ -424,18 +475,44 @@ fun LocationCard(
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                Text(
-                    text = location.address,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium,
-                    color = textDark
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = location.address,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Medium,
+                        color = textDark
+                    )
+                    if (isStartLocation) {
+                        Text(
+                            text = "📍 START",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Bold,
+                            color = successGreen
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "ID: ${location.id} | Lat: ${String.format("%.6f", location.latitude)}, Lon: ${String.format("%.6f", location.longitude)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = textLight
                 )
+            }
+            
+            if (isSelected) {
+                IconButton(
+                    onClick = onStartLocationChange
+                ) {
+                    Icon(
+                        imageVector = if (isStartLocation) Icons.Default.CheckCircle else Icons.Default.Place,
+                        contentDescription = if (isStartLocation) "Remove start" else "Set as start",
+                        tint = if (isStartLocation) successGreen else textLight,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
         }
     }
@@ -474,7 +551,6 @@ fun GAParametersCard(
                 color = textDark
             )
 
-            // Population Size
             Column {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -508,7 +584,6 @@ fun GAParametersCard(
                 )
             }
 
-            // Crossover Rate
             Column {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -542,7 +617,6 @@ fun GAParametersCard(
                 )
             }
 
-            // Mutation Rate
             Column {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -612,7 +686,6 @@ fun OptimizationTypeCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Distance Option
                 Card(
                     modifier = Modifier
                         .weight(1f)
@@ -645,7 +718,6 @@ fun OptimizationTypeCard(
                     }
                 }
 
-                // Time Option
                 Card(
                     modifier = Modifier
                         .weight(1f)
