@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -38,13 +39,21 @@ fun MapScreen() {
     val context = LocalContext.current
     val viewModel: MapViewModel = viewModel { MapViewModel(context) }
     val uiState by viewModel.uiState.collectAsState()
-    
+
     // Load locations from assets
     var locations by remember { mutableStateOf<List<Location>>(emptyList()) }
     var selectedLocationIds by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var isContentVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(true) }
-    
+    var showMap by remember { mutableStateOf(false) }
+
+    // Automatically show map when result is available
+    LaunchedEffect(uiState.result, uiState.isLoading) {
+        if (uiState.result != null && !uiState.isLoading) {
+            showMap = true
+        }
+    }
+
     // GA Parameters
     var populationSize by remember { mutableStateOf(100) }
     var crossoverRate by remember { mutableStateOf(0.8f) }
@@ -61,266 +70,315 @@ fun MapScreen() {
         isContentVisible = true
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(lightGray)
     ) {
-        // Clean header with solid color
-        Box(
-            modifier = Modifier.fillMaxWidth()
+        Column(
+            modifier = Modifier.fillMaxSize()
         ) {
-            // Solid background
+            // Clean header with solid color
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(140.dp)
-                    .background(airbnbRed)
-            )
-
-            // Header content
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Spacer(modifier = Modifier.height(24.dp))
-                AnimatedVisibility(
-                    visible = isContentVisible,
-                    enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(animationSpec = tween(600))
+                // Solid background
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(140.dp)
+                        .background(airbnbRed)
+                )
+
+                // Header content
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        // Horizontal layout: icon next to text
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Place,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(32.dp)
+                    Spacer(modifier = Modifier.height(24.dp))
+                    AnimatedVisibility(
+                        visible = isContentVisible,
+                        enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(
+                            animationSpec = tween(
+                                600
                             )
-                            Spacer(modifier = Modifier.width(12.dp))
+                        )
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            // Horizontal layout: icon next to text
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Place,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(
+                                    "Map",
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.White,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "Map",
-                                style = MaterialTheme.typography.headlineMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
+                                "Find nearby package boxes",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color.White.copy(alpha = 0.9f),
                                 textAlign = TextAlign.Center
                             )
                         }
-                        
-                        Spacer(modifier = Modifier.height(8.dp))
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Content area - List of locations with checkboxes
+            when {
+                isLoading -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = airbnbRed)
+                    }
+                }
+
+                locations.isEmpty() -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Place,
+                            contentDescription = null,
+                            tint = textLight,
+                            modifier = Modifier.size(64.dp)
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            "Find nearby package boxes",
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = Color.White.copy(alpha = 0.9f),
+                            "No locations found",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = textDark,
                             textAlign = TextAlign.Center
                         )
                     }
                 }
-            }
-        }
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Content area - List of locations with checkboxes
-        when {
-            isLoading -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = airbnbRed)
-                }
-            }
-            
-            locations.isEmpty() -> {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Place,
-                        contentDescription = null,
-                        tint = textLight,
-                        modifier = Modifier.size(64.dp)
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        "No locations found",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = textDark,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-            
-            else -> {
-                AnimatedVisibility(
-                    visible = isContentVisible,
-                    enter = slideInVertically(
-                        initialOffsetY = { it },
-                        animationSpec = tween(800, delayMillis = 100)
-                    ) + fadeIn(animationSpec = tween(800, delayMillis = 100))
-                ) {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                else -> {
+                    AnimatedVisibility(
+                        visible = isContentVisible,
+                        enter = slideInVertically(
+                            initialOffsetY = { it },
+                            animationSpec = tween(800, delayMillis = 100)
+                        ) + fadeIn(animationSpec = tween(800, delayMillis = 100))
                     ) {
-                        // Selection info
-                        item {
-                            if (selectedLocationIds.isNotEmpty()) {
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .shadow(
-                                            elevation = 4.dp,
-                                            shape = RoundedCornerShape(12.dp),
-                                            ambientColor = Color.Black.copy(alpha = 0.1f),
-                                            spotColor = Color.Black.copy(alpha = 0.1f)
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            // Selection info
+                            item {
+                                if (selectedLocationIds.isNotEmpty()) {
+                                    Card(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .shadow(
+                                                elevation = 4.dp,
+                                                shape = RoundedCornerShape(12.dp),
+                                                ambientColor = Color.Black.copy(alpha = 0.1f),
+                                                spotColor = Color.Black.copy(alpha = 0.1f)
+                                            ),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = airbnbRed.copy(
+                                                alpha = 0.1f
+                                            )
                                         ),
-                                    colors = CardDefaults.cardColors(containerColor = airbnbRed.copy(alpha = 0.1f)),
-                                    shape = RoundedCornerShape(12.dp),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
-                                ) {
-                                    Text(
-                                        text = "Selected: ${selectedLocationIds.size} location(s)",
-                                        modifier = Modifier.padding(16.dp),
-                                        style = MaterialTheme.typography.bodyLarge,
-                                        fontWeight = FontWeight.Bold,
-                                        color = airbnbRed
-                                    )
-                                }
-                            }
-                        }
-                        
-                        // GA Parameters Card
-                        item {
-                            GAParametersCard(
-                                populationSize = populationSize,
-                                crossoverRate = crossoverRate,
-                                mutationRate = mutationRate,
-                                onPopulationSizeChange = { populationSize = it },
-                                onCrossoverRateChange = { crossoverRate = it },
-                                onMutationRateChange = { mutationRate = it }
-                            )
-                        }
-                        
-                        // Optimization Type Selection
-                        item {
-                            OptimizationTypeCard(
-                                selectedType = optimizationType,
-                                onTypeSelected = { optimizationType = it }
-                            )
-                        }
-                        
-                        // Calculate Button
-                        item {
-                            Button(
-                                onClick = {
-                                    viewModel.calculateRoute(
-                                        selectedLocationIds = selectedLocationIds.toList(),
-                                        optimizationType = optimizationType,
-                                        populationSize = populationSize,
-                                        crossoverRate = crossoverRate.toDouble(),
-                                        mutationRate = mutationRate.toDouble()
-                                    )
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                enabled = !uiState.isLoading && selectedLocationIds.isNotEmpty(),
-                                colors = ButtonDefaults.buttonColors(containerColor = airbnbRed)
-                            ) {
-                                if (uiState.isLoading) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        color = Color.White,
-                                        strokeWidth = 2.dp
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Calculating...")
-                                } else {
-                                    Text("Calculate Route")
-                                }
-                            }
-                        }
-                        
-                        // Error Message
-                        item {
-                            uiState.errorMessage?.let { error ->
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(containerColor = Color(0xFFFFEBEE)),
-                                    shape = RoundedCornerShape(12.dp)
-                                ) {
-                                    Text(
-                                        text = error,
-                                        modifier = Modifier.padding(16.dp),
-                                        color = Color(0xFFC62828),
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
-                                }
-                            }
-                        }
-                        
-                        // Result Display
-                        item {
-                            uiState.result?.let { result ->
-                                RouteResultCard(result = result)
-                            }
-                        }
-                        
-                        // Locations list header
-                        item {
-                            Text(
-                                text = "Select Locations:",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = textDark,
-                                modifier = Modifier.padding(vertical = 8.dp)
-                            )
-                        }
-                        
-                        // Locations list
-                        items(locations) { location ->
-                            LocationCard(
-                                location = location,
-                                isSelected = selectedLocationIds.contains(location.id),
-                                onSelectionChange = { isSelected ->
-                                    selectedLocationIds = if (isSelected) {
-                                        selectedLocationIds + location.id
-                                    } else {
-                                        selectedLocationIds - location.id
+                                        shape = RoundedCornerShape(12.dp),
+                                        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+                                    ) {
+                                        Text(
+                                            text = "Selected: ${selectedLocationIds.size} location(s)",
+                                            modifier = Modifier.padding(16.dp),
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            fontWeight = FontWeight.Bold,
+                                            color = airbnbRed
+                                        )
                                     }
                                 }
-                            )
-                        }
-                        
-                        // Bottom padding for navigation bar
-                        item {
-                            Spacer(modifier = Modifier.height(80.dp))
+                            }
+
+                            // GA Parameters Card
+                            item {
+                                GAParametersCard(
+                                    populationSize = populationSize,
+                                    crossoverRate = crossoverRate,
+                                    mutationRate = mutationRate,
+                                    onPopulationSizeChange = { populationSize = it },
+                                    onCrossoverRateChange = { crossoverRate = it },
+                                    onMutationRateChange = { mutationRate = it }
+                                )
+                            }
+
+                            // Optimization Type Selection
+                            item {
+                                OptimizationTypeCard(
+                                    selectedType = optimizationType,
+                                    onTypeSelected = { optimizationType = it }
+                                )
+                            }
+
+                            // Calculate Button
+                            item {
+                                Button(
+                                    onClick = {
+                                        viewModel.calculateRoute(
+                                            selectedLocationIds = selectedLocationIds.toList(),
+                                            optimizationType = optimizationType,
+                                            populationSize = populationSize,
+                                            crossoverRate = crossoverRate.toDouble(),
+                                            mutationRate = mutationRate.toDouble()
+                                        )
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = !uiState.isLoading && selectedLocationIds.isNotEmpty(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = airbnbRed)
+                                ) {
+                                    if (uiState.isLoading) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp),
+                                            color = Color.White,
+                                            strokeWidth = 2.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Calculating...")
+                                    } else {
+                                        Text("Calculate Route")
+                                    }
+                                }
+                            }
+
+                            // Error Message
+                            item {
+                                uiState.errorMessage?.let { error ->
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = Color(
+                                                0xFFFFEBEE
+                                            )
+                                        ),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ) {
+                                        Text(
+                                            text = error,
+                                            modifier = Modifier.padding(16.dp),
+                                            color = Color(0xFFC62828),
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Locations list header
+                            item {
+                                Text(
+                                    text = "Select Locations:",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = textDark,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+                            }
+
+                            // Locations list
+                            items(locations) { location ->
+                                LocationCard(
+                                    location = location,
+                                    isSelected = selectedLocationIds.contains(location.id),
+                                    onSelectionChange = { isSelected ->
+                                        selectedLocationIds = if (isSelected) {
+                                            selectedLocationIds + location.id
+                                        } else {
+                                            selectedLocationIds - location.id
+                                        }
+                                    }
+                                )
+                            }
+
+                            // Bottom padding for navigation bar
+                            item {
+                                Spacer(modifier = Modifier.height(80.dp))
+                            }
                         }
                     }
                 }
             }
+        }
+        
+        // Show map overlay when result is available and showMap is true
+        // This needs to be outside the Column to overlay properly
+        uiState.result?.let { result ->
+            if (showMap) {
+                RouteMapOverlay(
+                    result = result,
+                    onBackClick = { showMap = false }
+                )
+            }
+        }
+    }
+}
+@Composable
+fun RouteMapOverlay(
+    result: TSPResult,
+    onBackClick: () -> Unit
+) {
+    val airbnbRed = Color(0xFFFF5A5F)
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        RouteMapView(
+            result = result,
+            modifier = Modifier.fillMaxSize()
+        )
+
+        // Back button
+        FloatingActionButton(
+            onClick = onBackClick,
+            modifier = Modifier
+                .padding(16.dp)
+                .align(Alignment.TopStart),
+            containerColor = airbnbRed
+        ) {
+            Icon(
+                imageVector = Icons.Default.ArrowBack,
+                contentDescription = "Back",
+                tint = Color.White
+            )
         }
     }
 }
 
 @Composable
-private fun LocationCard(
+fun LocationCard(
     location: Location,
     isSelected: Boolean,
     onSelectionChange: (Boolean) -> Unit
@@ -329,7 +387,7 @@ private fun LocationCard(
     val cardWhite = Color(0xFFFFFFFF)
     val textDark = Color(0xFF484848)
     val textLight = Color(0xFF767676)
-    
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -360,9 +418,9 @@ private fun LocationCard(
                     uncheckedColor = textLight
                 )
             )
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Column(
                 modifier = Modifier.weight(1f)
             ) {
@@ -384,7 +442,7 @@ private fun LocationCard(
 }
 
 @Composable
-private fun GAParametersCard(
+fun GAParametersCard(
     populationSize: Int,
     crossoverRate: Float,
     mutationRate: Float,
@@ -396,7 +454,7 @@ private fun GAParametersCard(
     val cardWhite = Color(0xFFFFFFFF)
     val textDark = Color(0xFF484848)
     val textLight = Color(0xFF767676)
-    
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -415,7 +473,7 @@ private fun GAParametersCard(
                 fontWeight = FontWeight.Bold,
                 color = textDark
             )
-            
+
             // Population Size
             Column {
                 Row(
@@ -449,7 +507,7 @@ private fun GAParametersCard(
                     )
                 )
             }
-            
+
             // Crossover Rate
             Column {
                 Row(
@@ -483,7 +541,7 @@ private fun GAParametersCard(
                     )
                 )
             }
-            
+
             // Mutation Rate
             Column {
                 Row(
@@ -522,7 +580,7 @@ private fun GAParametersCard(
 }
 
 @Composable
-private fun OptimizationTypeCard(
+fun OptimizationTypeCard(
     selectedType: OptimizationType,
     onTypeSelected: (OptimizationType) -> Unit
 ) {
@@ -530,7 +588,7 @@ private fun OptimizationTypeCard(
     val cardWhite = Color(0xFFFFFFFF)
     val textDark = Color(0xFF484848)
     val textLight = Color(0xFF767676)
-    
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -549,7 +607,7 @@ private fun OptimizationTypeCard(
                 fontWeight = FontWeight.Bold,
                 color = textDark
             )
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -565,7 +623,7 @@ private fun OptimizationTypeCard(
                             spotColor = Color.Black.copy(alpha = 0.1f)
                         ),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (selectedType == OptimizationType.DISTANCE) 
+                        containerColor = if (selectedType == OptimizationType.DISTANCE)
                             airbnbRed.copy(alpha = 0.15f) else cardWhite
                     ),
                     shape = RoundedCornerShape(12.dp),
@@ -586,7 +644,7 @@ private fun OptimizationTypeCard(
                         )
                     }
                 }
-                
+
                 // Time Option
                 Card(
                     modifier = Modifier
@@ -598,7 +656,7 @@ private fun OptimizationTypeCard(
                             spotColor = Color.Black.copy(alpha = 0.1f)
                         ),
                     colors = CardDefaults.cardColors(
-                        containerColor = if (selectedType == OptimizationType.TIME) 
+                        containerColor = if (selectedType == OptimizationType.TIME)
                             airbnbRed.copy(alpha = 0.15f) else cardWhite
                     ),
                     shape = RoundedCornerShape(12.dp),
@@ -625,10 +683,10 @@ private fun OptimizationTypeCard(
 }
 
 @Composable
-private fun RouteResultCard(result: TSPResult) {
+fun RouteResultCard(result: TSPResult) {
     val textDark = Color(0xFF484848)
     val successGreen = Color(0xFF00A699)
-    
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -658,23 +716,23 @@ private fun RouteResultCard(result: TSPResult) {
                     color = textDark
                 )
             }
-            
+
             Divider()
-            
+
             Text(
                 text = "Total ${if (result.optimizationType == OptimizationType.DISTANCE) "Distance" else "Time"}: ${String.format("%.2f", result.distance)} ${if (result.optimizationType == OptimizationType.DISTANCE) "km" else "s"}",
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold,
                 color = textDark
             )
-            
+
             Text(
                 text = "Route (${result.route.size} locations):",
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = textDark
             )
-            
+
             Text(
                 text = result.route.joinToString(" → "),
                 style = MaterialTheme.typography.bodySmall,
@@ -683,4 +741,5 @@ private fun RouteResultCard(result: TSPResult) {
         }
     }
 }
+
 
