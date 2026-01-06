@@ -16,6 +16,7 @@ import com.jvn.myapplication.ui.screens.BoxesListScreen
 import com.jvn.myapplication.ui.screens.BoxDetailScreen
 import com.jvn.myapplication.ui.screens.CleanerScreen
 import com.jvn.myapplication.ui.screens.HomeScreen
+import com.jvn.myapplication.ui.screens.MapScreen
 import com.jvn.myapplication.ui.screens.UserSettingsScreen
 import com.jvn.myapplication.data.repository.AuthRepository
 import com.jvn.myapplication.data.model.BoxData
@@ -121,6 +122,10 @@ fun MainNavigation(
                     } else {
                         BoxesHistoryScreen()
                     }
+                }
+                
+                composable(BottomNavItem.Map.route) {
+                    MapScreen()
                 }
                 
                 composable(BottomNavItem.UserSettings.route) {
