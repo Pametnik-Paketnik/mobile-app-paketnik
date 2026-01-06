@@ -14,6 +14,7 @@ public class TSP {
 
     public class City {
         public int index;
+        public int realId;
         public double x, y;
     }
 
@@ -69,11 +70,13 @@ public class TSP {
     DistanceType distanceType = DistanceType.EUCLIDEAN;
     int numberOfEvaluations, maxEvaluations;
 
-
     public TSP(String path, int maxEvaluations) {
         loadData(path);
         numberOfEvaluations = 0;
         this.maxEvaluations = maxEvaluations;
+    }
+
+    private TSP() {
     }
 
     public void evaluate(Tour tour) {
@@ -106,20 +109,74 @@ public class TSP {
 
     public Tour generateTour() {
         Tour tour = new Tour(numberOfCities);
-
         for (int i = 0; i < numberOfCities; i++) {
             tour.setCity(i, cities.get(i));
         }
-
         for (int i = numberOfCities - 1; i > 0; i--) {
             int index = RandomUtils.nextInt(i + 1);
-
             City a = tour.getPath()[index];
             tour.getPath()[index] = tour.getPath()[i];
             tour.getPath()[i] = a;
         }
-
         return tour;
+    }
+
+    public TSP generateSubproblem(List<Integer> selectedIds) {
+        TSP subProblem = new TSP();
+
+        int newSize = selectedIds.size();
+        subProblem.name = this.name + "_sub";
+        subProblem.numberOfCities = newSize;
+        subProblem.maxEvaluations = newSize * 10000;
+        subProblem.distanceType = DistanceType.WEIGHTED;
+
+        subProblem.cities = new ArrayList<>();
+        subProblem.weights = new double[newSize][newSize];
+        subProblem.numberOfEvaluations = 0;
+
+        int[] originalListIndices = new int[newSize];
+
+        for (int i = 0; i < newSize; i++) {
+            int targetRealId = selectedIds.get(i);
+            boolean found = false;
+
+            for (int k = 0; k < this.cities.size(); k++) {
+                City originalCity = this.cities.get(k);
+                if (originalCity.realId == targetRealId) {
+                    City newCity = new City();
+                    newCity.index = i + 1;
+                    newCity.realId = originalCity.realId;
+                    newCity.x = originalCity.x;
+                    newCity.y = originalCity.y;
+
+                    subProblem.cities.add(newCity);
+                    originalListIndices[i] = k;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                System.err.println("OPOZORILO: Nisem našel mesta z ID: " + targetRealId);
+            }
+        }
+
+        if (subProblem.cities.isEmpty()) {
+            throw new RuntimeException("Napaka pri generiranju sub-problema: Nobenega mesta nisem našel! Preveri realId v loadData.");
+        }
+
+        for (int i = 0; i < newSize; i++) {
+            for (int j = 0; j < newSize; j++) {
+                int oldRow = originalListIndices[i];
+                int oldCol = originalListIndices[j];
+                subProblem.weights[i][j] = this.weights[oldRow][oldCol];
+            }
+        }
+
+        if (!subProblem.cities.isEmpty()) {
+            subProblem.start = subProblem.cities.get(0);
+        }
+
+        return subProblem;
     }
 
     private void loadData(String path) {
@@ -192,6 +249,7 @@ public class TSP {
                         if (id <= numberOfCities) {
                             City c = new City();
                             c.index = id;
+                            c.realId = id;
                             c.x = x;
                             c.y = y;
                             tempCities[id - 1] = c;
@@ -230,6 +288,7 @@ public class TSP {
             } else {
                 City dummy = new City();
                 dummy.index = i + 1;
+                dummy.realId = i + 1;
                 dummy.x = 0;
                 dummy.y = 0;
                 cities.add(dummy);
