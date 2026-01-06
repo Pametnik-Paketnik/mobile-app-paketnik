@@ -1,0 +1,127 @@
+ID;Address;Latitude;Longitude
+1;Goriška cesta 24, 5270 Ajdovščina;45.887444;13.9034
+2;Čolnikov trg 9, 2234 Benedikt;46.607139;15.891579
+3;Ljubljanska cesta 10, 4260 Bled;46.367513;14.111401
+4;Trg svobode 2 C, 4264 Bohinjska Bistrica;46.272271;13.952841
+5;Molkov trg 12, 1353 Borovnica;45.919608;14.365884
+6;Obrobna ulica 1, 2354 Bresternica;46.567128;15.578361
+7;Podpeška cesta 20, 1351 Brezovica pri Ljubljani;46.020464;14.415713
+8;Ulica stare pravde 34, 8250 Brežice;45.905011;15.593714
+9;Krekov trg 9, 3101 Celje;46.229328;15.267367
+10;Ulica Prekmurske čete 14, 9232 Črenšovci;46.569107;16.293557
+11;Center 16, 2393 Črna na Koroškem;46.4826;14.883619
+12;Kolodvorska cesta 30 A, 8340 Črnomelj;45.574738;15.190462
+13;Krtina 144, 1233 Dob;46.152702;14.651583
+14;Ulica bratov Gerjovičev 52, 8257 Dobova;45.895049;15.66007
+15;Trg 4. julija 1, 2370 Dravograd;46.589171;15.024384
+16;Gorišnica 79, 2272 Gorišnica;46.422528;16.035724
+17;Cesta na Stadion 1, 9250 Gornja Radgona;46.675168;15.994197
+18;Podsmrečje 20, 3342 Gornji Grad;46.293522;14.804191
+19;Attemsov trg 8, 3342 Gornji Grad;46.296097;14.805107
+20;Partizanska cesta 7, 1290 Grosuplje;45.956088;14.657687
+21;Vodnikova ulica 1, 5280 Idrija;46.001438;14.026217
+22;Ploščad Osvobodilne fronte 4, 1295 Ivančna Gorica;45.938339;14.805899
+23;Ivanjkovci 9 B, 2259 Ivanjkovci;46.462317;16.157213
+24;Cankarjev drevored 1, 6310 Izola;45.536834;13.660572
+25;Cesta Cirila Tavčarja 8, 4271 Jesenice;46.439778;14.043457
+26;Jesenice 9, 8261 Jesenice na Dolenjskem;45.860018;15.688105
+27;Cesta v Rošpoh 18, 2351 Kamnica;46.572596;15.612107
+28;Ljubljanska cesta 14 A, 1241 Kamnik;46.208836;14.598329
+29;Kopališka ulica 2, 2325 Kidričevo;46.403543;15.797108
+30;Kobilje 30, 9227 Kobilje;46.6845;16.393219
+31;Ljubljanska cesta 23, 1330 Kočevje;45.641872;14.856227
+32;Glavarjeva cesta 39, 1218 Komenda;46.202831;14.541776
+33;Kolodvorska cesta 9, 6104 Koper;45.540572;13.7397
+34;Dražgoška ulica 8, 4101 Kranj;46.248719;14.357246
+35;Škofjeloška cesta 17, 4103 Kranj;46.231138;14.346491
+36;Jezerska cesta 41, 4104 Kranj;46.247545;14.369225
+37;Ulica Lojzeta Hrovata 2, 4105 Kranj;46.238029;14.365879
+38;Borovška cesta 92, 4280 Kranjska Gora;46.485133;13.782625
+39;Trg Matije Gubca 1, 8271 Krško;45.957997;15.494492
+40;Partizanska cesta 3, 2230 Lenart v Slovenskih goricah;46.577416;15.83071
+41;Trg ljudske pravice 7, 9220 Lendava;46.561845;16.454912
+42;Alpska cesta 37 B, 4248 Lesce;46.361279;14.158019
+43;Poljanski nasip 30, 1104 Ljubljana;46.050604;14.515143
+44;Pražakova ulica 3, 1106 Ljubljana;46.057103;14.506889
+45;Zaloška cesta 57, 1110 Ljubljana;46.056473;14.534872
+46;Dunajska cesta 141, 1113 Ljubljana;46.080309;14.51247
+47;Riharjeva ulica 38, 1115 Ljubljana;46.038951;14.499443
+48;Vodnikova cesta 235, 1117 Ljubljana;46.078772;14.472745
+49;Resljeva cesta 14, 1124 Ljubljana;46.054336;14.511109
+50;Letališka cesta 12, 1122 Ljubljana;46.060887;14.54678
+51;Tacenska cesta 94, 1133 Ljubljana;46.11333;14.462357
+52;Hrvaška ulica 8, 1122 Ljubljana;46.067012;14.54524
+53;Ob železnici 22, 1110 Ljubljana;46.059825;14.536568
+54;Hranilniška ulica 1, 1116 Ljubljana;46.064271;14.506546
+55;Dunajska cesta 145, 1113 Ljubljana;46.080557;14.512594
+56;Litijska cesta 140, 1119 Ljubljana;46.044946;14.559714
+57;Tehnološki park 22a, 1125 Ljubljana;46.050644;14.459543
+58;Tržaška cesta 89, 1111 Ljubljana;46.041858;14.477502
+59;Cesta dveh cesarjev 73, 1123 Ljubljana;46.028998;14.478722
+60;Cesta dveh cesarjev 71, 1123 Ljubljana;46.029365;14.482348
+61;Dunajska cesta 361, 1231 Ljubljana - Črnuče;46.102578;14.529818
+62;Zadobrovška cesta 14, 1260 Ljubljana - Polje;46.057045;14.583564
+63;Prušnikova ulica 2, 1210 Ljubljana - Šentvid;46.090593;14.472703
+64;Makole 37, 2321 Makole;46.317499;15.666924
+65;Malečnik 56, 2229 Malečnik;46.555683;15.693628
+66;Dominkuševa ulica 4, 2116 Maribor;46.56351;15.656727
+67;Istrska ulica 49, 2104 Maribor;46.548626;15.674622
+68;Gosposvetska cesta 83, 2101 Maribor;46.563046;15.627326
+69;Gosposvetska cesta 84, 2101 Maribor;46.563557;15.628001
+70;Pohorska ulica 21a, 2115 Maribor;46.538427;15.604819
+71;Prvomajska ulica 35, 2105 Maribor;46.532457;15.670115
+72;Radvanjska cesta 63, 2103 Maribor;46.542656;15.631429
+73;Razlagova ulica 3, 2116 Maribor;46.562232;15.650763
+74;Šarhova ulica 53, 2106 Maribor;46.551145;15.621939
+75;Šarhova ulica 59 A, 2106 Maribor;46.551389;15.621193
+76;Tyrševa ulica 23, 2101 Maribor;46.563764;15.646341
+77;Ulica heroja Šlandra 15, 2116 Maribor;46.558714;15.654028
+78;Trdinov trg 8 A, 1234 Mengeš;46.162982;14.568712
+79;Naselje Borisa Kidriča 2, 8330 Metlika;45.644989;15.316799
+80;Cesta na Fužine 3, 8233 Mirna;45.952657;15.060136
+81;Vegova ulica 1, 1251 Moravče;46.135657;14.744988
+82;Savinjska cesta 3, 3330 Mozirje;46.338822;14.960244
+83;Trg Zmage 6, 9101 Murska Sobota;46.660826;16.163813
+84;Ulica Štefana Kovača 43, 9101 Murska Sobota;46.66279;16.146891
+85;Glavni trg 31, 2366 Muta;46.610006;15.163468
+86;Glavna cesta 24, 4202 Naklo;46.272953;14.315734
+87;Kidričeva ulica 19, 5101 Nova Gorica;45.955513;13.648111
+88;Industrijska cesta 9, 5102 Nova Gorica;45.954551;13.67428
+89;Ulica Slavka Gruma 7, 8102 Novo mesto;45.798788;15.155427
+90;Novi trg 7, 8105 Novo mesto;45.80494;15.164527
+91;Poštna ulica 2, 2270 Ormož;46.40801;16.14877
+92;Gornji Petrovci 40 E, 9203 Petrovci;46.803039;16.217571
+93;Malteška cesta 38, 3313 Polzela;46.280676;15.076264
+94;Ulica 1. maja 2 A, 6230 Postojna;45.77497;14.212
+95;Šiška 1, 4205 Preddvor;46.302328;14.420707
+96;Trg 32 A, 2391 Prevalje;46.545088;14.914528
+97;Mariborska Cesta 19, 2251 Ptuj;46.416581;15.85987
+98;Ljubljanska cesta 14, 2327 Rače;46.453748;15.674698
+99;Panonska cesta 5, 9252 Radenci;46.64263;16.039314
+100;Trg svobode 19, 2390 Ravne na Koroškem;46.544685;14.966227
+101;Kolodvorska ulica 2, 1310 Ribnica;45.740496;14.727421
+102;Slovenski trg 4, 2352 Selnica ob Dravi;46.551465;15.493035
+103;Trg svobode 9, 8290 Sevnica;46.009742;15.302932
+104;Partizanska cesta 48 A, 6210 Sežana;45.707515;13.868579
+105;Kidričeva ulica 3a, 2380 Slovenj Gradec;46.512303;15.079759
+106;Cesta k Dravi 5, 2241 Spodnji Duplek;46.500401;15.750091
+107;Vrtojbenska cesta 19 C, 5290 Šempeter pri Gorici;45.928374;13.640601
+108;Gasilska cesta 2 A, 4208 Šenčur;46.242348;14.419109
+109;Prvomajska cesta 3, 8310 Šentjernej;45.843985;15.338861
+110;Mestni trg 5a, 3230 Šentjur;46.21672;15.394988
+111;Kapucinski trg 14, 4221 Škofja Loka;46.166844;14.305868
+112;Aškerčev trg 26, 3240 Šmarje pri Jelšah;46.228662;15.518427
+113;Trg maršala Tita 10, 5220 Tolmin;46.183161;13.733756
+114;Trg revolucije 27, 1420 Trbovlje;46.148193;15.041682
+115;Trg Franca Fakina 4, 1422 Trbovlje;46.16063;15.053982
+116;Goliev trg 11, 8210 Trebnje;45.90752;15.007284
+117;Predilniška cesta 10, 4290 Tržič;46.361606;14.307118
+118;Kidričeva cesta 2a, 3320 Velenje;46.364789;15.110988
+119;Poštna ulica 2, 1360 Vrhnika;45.963694;14.2958
+120;Tržaška cesta 32, 1360 Vrhnika;45.959902;14.293062
+121;Cesta zmage 28, 1410 Zagorje ob Savi;46.130731;14.996405
+122;Mariborska ulica 26, 2314 Zgornja Polskava;46.426353;15.611316
+123;Ulica heroja Staneta 1, 3310 Žalec;46.252904;15.160093
+124;Na Kresu 1, 4228 Železniki;46.225745;14.168804
+125;Trg svobode 1, 4226 Žiri;46.048105;14.110205
+126;Žirovnica 4, 4274 Žirovnica;46.404083;14.135823
